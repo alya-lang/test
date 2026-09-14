@@ -1,0 +1,410 @@
+#!/usr/bin/env python3
+"""
+run_ecosystem_tests.py
+
+Comprehensive cross-platform test runner for the Alya language ecosystem.
+Tests the Alya compiler (custom branch/ref) against all official Alya packages.
+
+Compatible with Linux, macOS (Intel & Apple Silicon), and Windows.
+Runs seamlessly both locally and inside GitHub Actions CI.
+"""
+
+import argparse
+import os
+import platform
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+# Official Alya ecosystem packages
+OFFICIAL_PACKAGES = [
+    "cli",
+    "crypto",
+    "csv",
+    "dotenv",
+    "http",
+    "json",
+    "jwt",
+    "logger",
+    "mime",
+    "rand",
+    "semver",
+    "sqlite",
+    "template",
+    "toml",
+    "url",
+    "uuid",
+]
+
+# ANSI color codes
+COLOR_RESET = "\033[0m"
+COLOR_BOLD = "\033[1m"
+COLOR_GREEN = "\033[0;32m"
+COLOR_RED = "\033[0;31m"
+COLOR_CYAN = "\033[0;36m"
+COLOR_YELLOW = "\033[1;33m"
+COLOR_GRAY = "\033[0;90m"
+
+# Ensure UTF-8 output across all consoles
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+
+def log(msg, color=""):
+    prefix = f"{COLOR_BOLD}{COLOR_CYAN}[alya-test]{COLOR_RESET} "
+    print(f"{prefix}{color}{msg}{COLOR_RESET}")
+
+
+def run_cmd(cmd, cwd=None, env=None, check=False, capture=False):
+    """Run a command with proper error logging and optional output capture."""
+    exec_env = os.environ.copy()
+    if env:
+        exec_env.update(env)
+
+    if capture:
+        res = subprocess.run(
+            cmd,
+            cwd=cwd,
+            env=exec_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    else:
+        res = subprocess.run(
+            cmd,
+            cwd=cwd,
+            env=exec_env,
+        )
+
+    if check and res.returncode != 0:
+        raise subprocess.CalledProcessError(res.returncode, cmd)
+    return res
+
+
+def build_compiler(compiler_dir, profile="quick"):
+    """Builds the Alya compiler using cargo and returns path to alyac binary."""
+    log(f"Building Alya compiler in {compiler_dir} (profile: {profile})...", COLOR_CYAN)
+    
+    cargo_cmd = ["cargo", "build", f"--profile={profile}"]
+    res = run_cmd(cargo_cmd, cwd=compiler_dir)
+    if res.returncode != 0:
+        log("Cargo build failed!", COLOR_RED)
+        sys.exit(1)
+
+    # Locate binary
+    ext = ".exe" if sys.platform == "win32" else ""
+    bin_name = f"alyac{ext}"
+    bin_path = compiler_dir / "target" / profile / bin_name
+    
+    if not bin_path.is_file():
+        # Try release directory fallback
+        bin_path = compiler_dir / "target" / "release" / bin_name
+
+    if not bin_path.is_file():
+        log(f"Compiler executable not found at: {bin_path}", COLOR_RED)
+        sys.exit(1)
+
+    log(f"Compiler ready: {bin_path}", COLOR_GREEN)
+    
+    # Add directory to PATH
+    bin_dir = str(bin_path.parent.resolve())
+    os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+    
+    # Export to GITHUB_PATH if running in GitHub Actions
+    gh_path = os.environ.get("GITHUB_PATH")
+    if gh_path and Path(gh_path).is_file():
+        with open(gh_path, "a", encoding="utf-8") as f:
+            f.write(f"{bin_dir}\n")
+
+    # Verify version
+    ver_res = run_cmd(["alyac", "--version"], capture=True)
+    version_str = ver_res.stdout.strip() if ver_res.returncode == 0 else "unknown"
+    log(f"Installed alyac version: {version_str}", COLOR_GREEN)
+    
+    return bin_path, version_str
+
+
+def run_compiler_tests(compiler_dir):
+    """Runs compiler test suite with cargo test."""
+    log("Running compiler test suite (cargo test)...", COLOR_CYAN)
+    start = time.time()
+    res = run_cmd(["cargo", "test"], cwd=compiler_dir, capture=True)
+    duration = time.time() - start
+    passed = (res.returncode == 0)
+    
+    if passed:
+        log(f"Compiler tests passed ({duration:.1f}s)", COLOR_GREEN)
+    else:
+        log(f"Compiler tests FAILED ({duration:.1f}s)", COLOR_RED)
+        print(res.stdout)
+        print(res.stderr)
+        
+    return {
+        "name": "alya (cargo test)",
+        "passed": passed,
+        "duration": duration,
+        "output": res.stdout + "\n" + res.stderr,
+    }
+
+
+def test_package(pkg_name, pkg_dir):
+    """Runs fmt, install, and test on a single Alya package."""
+    log(f"Testing Package: Lib/{pkg_name}...", COLOR_CYAN)
+    start = time.time()
+    
+    # 1. Format check
+    fmt_res = run_cmd(["alyac", "fmt", ".", "--check"], cwd=pkg_dir, capture=True)
+    
+    # 2. Dependency install if needed
+    if (pkg_dir / "alya.lock").is_file() or (pkg_dir / "alya.toml").is_file():
+        run_cmd(["alyac", "install"], cwd=pkg_dir, capture=True)
+
+    # 3. Run test suite
+    test_res = run_cmd(["alyac", "test"], cwd=pkg_dir, capture=True)
+    duration = time.time() - start
+    passed = (test_res.returncode == 0)
+
+    if passed:
+        log(f"  ✓ {pkg_name} passed ({duration:.2f}s)", COLOR_GREEN)
+    else:
+        log(f"  ✗ {pkg_name} FAILED ({duration:.2f}s)", COLOR_RED)
+        if test_res.stdout:
+            print(test_res.stdout.strip())
+        if test_res.stderr:
+            print(test_res.stderr.strip())
+
+    return {
+        "name": pkg_name,
+        "passed": passed,
+        "duration": duration,
+        "fmt_ok": (fmt_res.returncode == 0),
+        "output": test_res.stdout + "\n" + test_res.stderr,
+    }
+
+
+def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp_res, pkg_results):
+    """Writes detailed markdown summary to $GITHUB_STEP_SUMMARY."""
+    gh_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not gh_summary:
+        return
+
+    total = len(pkg_results)
+    passed_count = sum(1 for r in pkg_results if r["passed"])
+    failed_count = total - passed_count
+    all_ok = (failed_count == 0) and (comp_res is None or comp_res["passed"])
+
+    lines = [
+        f"## {'🎉 Ecosystem Integration Tests Passed' if all_ok else '❌ Ecosystem Integration Tests Failed'}",
+        "",
+        "| Metric | Value |",
+        "|:---|:---|",
+        f"| **OS** | `{os_name}` (`{arch_name}`) |",
+        f"| **Alya Compiler** | `{compiler_ver}` (branch: `{compiler_branch}`) |",
+        f"| **Total Packages** | `{total}` |",
+        f"| **Passed Packages** | `{passed_count} / {total}` |",
+        f"| **Failed Packages** | `{failed_count}` |",
+        "",
+    ]
+
+    if comp_res:
+        status_icon = "✅ Passed" if comp_res["passed"] else "❌ Failed"
+        lines.append(f"### Compiler Tests: {status_icon} (`{comp_res['duration']:.1f}s`)")
+        if not comp_res["passed"]:
+            lines.append("<details><summary>Compiler Test Failure Log</summary>\n\n```text\n" + comp_res["output"] + "\n```\n</details>\n")
+
+    lines.append("### 📦 Package Results")
+    lines.append("")
+    lines.append("| Package | Status | Duration | Format Check |")
+    lines.append("|:---|:---:|:---:|:---:|")
+
+    for r in pkg_results:
+        icon = "✅ Passed" if r["passed"] else "❌ **FAILED**"
+        fmt_icon = "✓" if r.get("fmt_ok", True) else "⚠️"
+        lines.append(f"| [`{r['name']}`](https://github.com/alya-lang/{r['name']}) | {icon} | `{r['duration']:.2f}s` | {fmt_icon} |")
+
+    # Add failure logs if any
+    failed_pkgs = [r for r in pkg_results if not r["passed"]]
+    if failed_pkgs:
+        lines.append("\n### 🚨 Failure Details")
+        for fp in failed_pkgs:
+            lines.append(f"<details><summary><b>Failure output for {fp['name']}</b></summary>\n\n```text\n{fp['output'].strip()}\n```\n</details>\n")
+
+    with open(gh_summary, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Alya Ecosystem CI Test Runner")
+    parser.add_argument(
+        "--compiler-dir",
+        type=Path,
+        default=None,
+        help="Path to pre-existing compiler repo. If omitted, cloned automatically.",
+    )
+    parser.add_argument(
+        "--compiler-repo",
+        type=str,
+        default="https://github.com/alya-lang/alya.git",
+        help="Git repository URL for Alya compiler (default: alya-lang/alya)",
+    )
+    parser.add_argument(
+        "--compiler-branch",
+        type=str,
+        default="develop",
+        help="Git branch or tag for Alya compiler (default: develop)",
+    )
+    parser.add_argument(
+        "--packages",
+        type=str,
+        default="ALL",
+        help="Comma-separated packages to test, or 'ALL' (default: ALL)",
+    )
+    parser.add_argument(
+        "--packages-dir",
+        type=Path,
+        default=None,
+        help="Path to local packages folder. If omitted, cloned automatically.",
+    )
+    parser.add_argument(
+        "--skip-compiler-tests",
+        action="store_true",
+        help="Skip running cargo test on the compiler itself.",
+    )
+    parser.add_argument(
+        "--workspace-dir",
+        type=Path,
+        default=Path("workspace"),
+        help="Directory to store cloned repos (default: ./workspace)",
+    )
+
+    args = parser.parse_args()
+    
+    os_name = platform.system()
+    arch_name = platform.machine()
+    log(f"Running Alya Ecosystem Tests on {os_name} ({arch_name})", COLOR_BOLD)
+
+    workspace = args.workspace_dir.resolve()
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    # 1. Resolve Compiler
+    compiler_dir = args.compiler_dir
+    if not compiler_dir:
+        # Check if local sibling ../Src/alya exists
+        sibling_compiler = (Path(__file__).resolve().parent.parent.parent / "Src" / "alya").resolve()
+        if sibling_compiler.is_dir() and (sibling_compiler / "Cargo.toml").is_file() and not os.environ.get("GITHUB_ACTIONS"):
+            log(f"Using local compiler repository: {sibling_compiler}", COLOR_CYAN)
+            compiler_dir = sibling_compiler
+        else:
+            compiler_dir = workspace / "alya-compiler"
+            if not compiler_dir.is_dir():
+                log(f"Cloning compiler from {args.compiler_repo} (branch: {args.compiler_branch})...", COLOR_CYAN)
+                run_cmd([
+                    "git", "clone",
+                    "--depth", "1",
+                    "--branch", args.compiler_branch,
+                    args.compiler_repo,
+                    str(compiler_dir),
+                ], check=True)
+
+    # 2. Build Compiler
+    _, compiler_version = build_compiler(compiler_dir, profile="quick")
+
+    # 3. Run Compiler Tests
+    comp_res = None
+    if not args.skip_compiler_tests:
+        comp_res = run_compiler_tests(compiler_dir)
+
+    # 4. Resolve Packages
+    if args.packages.strip().upper() == "ALL":
+        target_pkgs = OFFICIAL_PACKAGES
+    else:
+        target_pkgs = [p.strip() for p in args.packages.split(",") if p.strip()]
+
+    log(f"Target packages to test ({len(target_pkgs)}): {', '.join(target_pkgs)}", COLOR_CYAN)
+
+    pkg_results = []
+    packages_base = args.packages_dir
+    if not packages_base:
+        sibling_lib = (Path(__file__).resolve().parent.parent.parent / "Lib").resolve()
+        if sibling_lib.is_dir() and not os.environ.get("GITHUB_ACTIONS"):
+            packages_base = sibling_lib
+
+    for pkg_name in target_pkgs:
+        pkg_dir = None
+        if packages_base and (packages_base / pkg_name).is_dir():
+            pkg_dir = packages_base / pkg_name
+        else:
+            pkg_dir = workspace / "packages" / pkg_name
+            if not pkg_dir.is_dir():
+                pkg_repo = f"https://github.com/alya-lang/{pkg_name}.git"
+                run_cmd([
+                    "git", "clone",
+                    "--depth", "1",
+                    "--branch", "main",
+                    pkg_repo,
+                    str(pkg_dir),
+                ], capture=True)
+
+        if not pkg_dir.is_dir():
+            log(f"Warning: Package directory {pkg_dir} could not be resolved. Skipping.", COLOR_YELLOW)
+            continue
+
+        res = test_package(pkg_name, pkg_dir)
+        pkg_results.append(res)
+
+    # 5. Print Terminal Summary Table
+    print("\n" + "=" * 60)
+    print(f"{COLOR_BOLD}                 ECOSYSTEM TEST SUMMARY{COLOR_RESET}")
+    print("=" * 60)
+    print(f"  Platform:         {os_name} ({arch_name})")
+    print(f"  Compiler Version: {compiler_version}")
+    print(f"  Compiler Branch:  {args.compiler_branch}")
+    print("-" * 60)
+
+    if comp_res:
+        comp_status = f"{COLOR_GREEN}PASSED{COLOR_RESET}" if comp_res["passed"] else f"{COLOR_RED}FAILED{COLOR_RESET}"
+        print(f"  Compiler Test:    {comp_status} ({comp_res['duration']:.1f}s)")
+
+    passed_pkgs = [r for r in pkg_results if r["passed"]]
+    failed_pkgs = [r for r in pkg_results if not r["passed"]]
+
+    print(f"\n  Passed Packages ({len(passed_pkgs)}/{len(pkg_results)}):")
+    for r in passed_pkgs:
+        print(f"    {COLOR_GREEN}✓{COLOR_RESET} {r['name']:<15} ({r['duration']:.2f}s)")
+
+    if failed_pkgs:
+        print(f"\n  {COLOR_RED}Failed Packages ({len(failed_pkgs)}/{len(pkg_results)}):{COLOR_RESET}")
+        for r in failed_pkgs:
+            print(f"    {COLOR_RED}✗{COLOR_RESET} {r['name']:<15} ({r['duration']:.2f}s)")
+
+    print("=" * 60 + "\n")
+
+    # 6. Output to GitHub Summary
+    write_github_summary(
+        os_name=os_name,
+        arch_name=arch_name,
+        compiler_ver=compiler_version,
+        compiler_branch=args.compiler_branch,
+        comp_res=comp_res,
+        pkg_results=pkg_results,
+    )
+
+    # 7. Exit Code
+    all_passed = (len(failed_pkgs) == 0) and (comp_res is None or comp_res["passed"])
+    if not all_passed:
+        log("Ecosystem tests finished with failures.", COLOR_RED)
+        sys.exit(1)
+    else:
+        log("All ecosystem tests completed successfully!", COLOR_GREEN)
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

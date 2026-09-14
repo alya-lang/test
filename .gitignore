@@ -1,0 +1,19 @@
+# Rust & Build Artifacts
+target/
+Cargo.lock
+
+# Ecosystem Workspace (Cloned compiler & packages)
+alya-compiler/
+packages/
+workspace/
+.alya/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local / OS Temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

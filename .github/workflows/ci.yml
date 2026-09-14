@@ -1,0 +1,63 @@
+name: Ecosystem CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      compiler_branch:
+        description: 'Alya compiler branch, tag, or commit to test against'
+        required: true
+        default: 'develop'
+      packages:
+        description: 'Comma-separated packages to test or ALL'
+        required: true
+        default: 'ALL'
+      run_compiler_tests:
+        description: 'Run cargo test on the compiler'
+        type: boolean
+        required: true
+        default: true
+  schedule:
+    - cron: '0 2 * * *' # Nightly at 02:00 UTC
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ecosystem-test:
+    name: Ecosystem (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run Ecosystem Integration Tests
+        shell: bash
+        run: |
+          COMPILER_BRANCH="${{ inputs.compiler_branch || 'develop' }}"
+          PACKAGES="${{ inputs.packages || 'ALL' }}"
+          EXTRA_FLAGS=""
+          if [ "${{ inputs.run_compiler_tests }}" = "false" ]; then
+            EXTRA_FLAGS="--skip-compiler-tests"
+          fi
+
+          python3 scripts/run_ecosystem_tests.py \
+            --compiler-branch "$COMPILER_BRANCH" \
+            --packages "$PACKAGES" \
+            $EXTRA_FLAGS
