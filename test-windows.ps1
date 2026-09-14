@@ -6,6 +6,12 @@ param(
 $ErrorActionPreference = "Stop"
 $RootDir = Split-Path -Parent $PSScriptRoot
 $LibDir = Join-Path $RootDir "Lib"
+if (-not (Test-Path $LibDir)) {
+    $LibDir = Join-Path (Split-Path -Parent $RootDir) "Lib"
+}
+
+# Ensure toolchain auto-installation is enabled for local runs
+$env:ALYA_TOOLCHAIN_AUTO_INSTALL = "1"
 
 # Verify alyac command
 try {

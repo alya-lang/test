@@ -49,6 +49,8 @@ jobs:
 
       - name: Run Ecosystem Integration Tests
         shell: bash
+        env:
+          ALYA_TOOLCHAIN_AUTO_INSTALL: '1'
         run: |
           COMPILER_BRANCH="${{ inputs.compiler_branch || 'develop' }}"
           PACKAGES="${{ inputs.packages || 'ALL' }}"

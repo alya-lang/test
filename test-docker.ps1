@@ -8,8 +8,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-# Project root directory (parent of Tst/)
+# Project root directory (parent of Tst/ or workspace root)
 $RootDir = Split-Path -Parent $PSScriptRoot
+if (-not (Test-Path (Join-Path $RootDir "Lib"))) {
+    $RootDir = Split-Path -Parent $RootDir
+}
 
 
 # Check if Docker is available

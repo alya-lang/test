@@ -12,6 +12,12 @@ COLOR_RESET='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LIB_DIR="${ROOT_DIR}/Lib"
+if [ ! -d "${LIB_DIR}" ]; then
+    LIB_DIR="$(cd "${ROOT_DIR}/.." && pwd)/Lib"
+fi
+
+# Ensure toolchain auto-installation is enabled for local tests
+export ALYA_TOOLCHAIN_AUTO_INSTALL="1"
 
 # Default options
 TARGET_OS=""
@@ -81,8 +87,11 @@ echo -e "${COLOR_BOLD}${COLOR_CYAN}=============================================
 
 # Find or verify alyac compiler
 if ! command -v alyac &> /dev/null; then
-    # Check if built in local workspace (../Src/alya)
+    # Check if built in local workspace (../Src/alya or ../../Src/alya)
     SRC_DIR="${ROOT_DIR}/Src/alya"
+    if [ ! -d "${SRC_DIR}" ]; then
+        SRC_DIR="$(cd "${ROOT_DIR}/.." && pwd)/Src/alya"
+    fi
     LOCAL_ALYAC=""
     for candidate in \
         "${SRC_DIR}/target/quick/alyac" \
