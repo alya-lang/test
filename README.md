@@ -79,9 +79,9 @@ python scripts/run_ecosystem_tests.py --packages "uuid,semver" --skip-compiler-t
 
 ### ⚙️ Runner Architecture & Self-Sufficiency
 
-- **Standalone Mode (Clean Clone):** Anyone cloning this repository in isolation can run the test suite immediately. The runner automatically clones `alya-lang/alya` and the required package repositories into a local `workspace/` directory.
-- **Local Workspace Optimization:** When run inside the full Alya workspace (where `Src/alya` and `Lib/` exist), the runner automatically detects them and tests against your local working tree for instant iteration.
-- **Automatic Toolchain Provisioning:** Exports `ALYA_TOOLCHAIN_AUTO_INSTALL=1` and dynamically provisions minimal C/Assembly build tools if no host GCC or Clang compiler is detected in `PATH`.
+- **100% Standalone & Universal:** The runner is completely self-contained. It clones the compiler (`alya-lang/alya`) and packages directly into an isolated local `workspace/` folder.
+- **Custom Local Paths (Optional):** If you want to test against specific local directories, simply pass `--compiler-dir <path>` or `--packages-dir <path>`.
+- **Automatic Toolchain Provisioning:** Sets `ALYA_TOOLCHAIN_AUTO_INSTALL=1` and automatically configures minimal C/Assembly build tools if no host GCC or Clang is detected in `PATH`.
 
 ---
 

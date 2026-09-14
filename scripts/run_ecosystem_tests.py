@@ -304,28 +304,16 @@ def main():
     # 1. Resolve Compiler
     compiler_dir = args.compiler_dir
     if not compiler_dir:
-        # Check if local sibling ../Src/alya exists (either from repo root or Tst/ parent)
-        candidates = [
-            (Path(__file__).resolve().parent.parent.parent / "Src" / "alya").resolve(),
-            (Path(__file__).resolve().parent.parent.parent.parent / "Src" / "alya").resolve(),
-        ]
-        for candidate in candidates:
-            if candidate.is_dir() and (candidate / "Cargo.toml").is_file() and not os.environ.get("GITHUB_ACTIONS"):
-                log(f"Using local compiler repository: {candidate}", COLOR_CYAN)
-                compiler_dir = candidate
-                break
-
-        if not compiler_dir:
-            compiler_dir = workspace / "alya-compiler"
-            if not compiler_dir.is_dir():
-                log(f"Cloning compiler from {args.compiler_repo} (branch: {args.compiler_branch})...", COLOR_CYAN)
-                run_cmd([
-                    "git", "clone",
-                    "--depth", "1",
-                    "--branch", args.compiler_branch,
-                    args.compiler_repo,
-                    str(compiler_dir),
-                ], check=True)
+        compiler_dir = workspace / "alya-compiler"
+        if not compiler_dir.is_dir():
+            log(f"Cloning compiler from {args.compiler_repo} (branch: {args.compiler_branch})...", COLOR_CYAN)
+            run_cmd([
+                "git", "clone",
+                "--depth", "1",
+                "--branch", args.compiler_branch,
+                args.compiler_repo,
+                str(compiler_dir),
+            ], check=True)
 
     # 2. Build Compiler
     _, compiler_version = build_compiler(compiler_dir, profile="quick")
@@ -345,15 +333,6 @@ def main():
 
     pkg_results = []
     packages_base = args.packages_dir
-    if not packages_base:
-        lib_candidates = [
-            (Path(__file__).resolve().parent.parent.parent / "Lib").resolve(),
-            (Path(__file__).resolve().parent.parent.parent.parent / "Lib").resolve(),
-        ]
-        for cand in lib_candidates:
-            if cand.is_dir() and not os.environ.get("GITHUB_ACTIONS"):
-                packages_base = cand
-                break
 
     for pkg_name in target_pkgs:
         pkg_dir = None
