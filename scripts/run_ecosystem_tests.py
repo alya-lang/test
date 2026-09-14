@@ -33,6 +33,7 @@ OFFICIAL_PACKAGES = [
     "semver",
     "sqlite",
     "template",
+    "term",
     "toml",
     "url",
     "uuid",
