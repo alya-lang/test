@@ -70,12 +70,47 @@ python scripts/run_ecosystem_tests.py --packages "json,http,rand"
 python scripts/run_ecosystem_tests.py --compiler-branch my-feature-branch
 ```
 
-### Local Windows & Docker Shortcuts
+### Local Platform Runners
+
+#### 🐧 Native Linux
+```bash
+# Run all package tests on local Linux:
+./test-linux.sh
+
+# Test specific packages:
+./test-linux.sh --pkg "json,http,crypto"
+
+# Check code formatting and run compiler tests:
+./test-linux.sh --fmt --compiler
+```
+
+#### 🍏 Native macOS (Apple Silicon & Intel)
+```bash
+# Run all package tests on local macOS:
+./test-macos.sh
+
+# Test specific packages:
+./test-macos.sh --pkg "json,http,crypto"
+
+# Check code formatting:
+./test-macos.sh --fmt
+```
+
+#### 🪟 Windows (PowerShell)
 ```powershell
 # Run all package tests on local Windows:
 .\test-windows.ps1
 
-# Run in Linux Docker container:
+# Test specific packages:
+.\test-windows.ps1 -Pkg "json,http"
+
+# Check code formatting:
+.\test-windows.ps1 -Fmt
+```
+
+#### 🐳 Docker Container (Linux)
+```powershell
+# Run inside isolated Linux container:
 .\test-docker.ps1
 ```
 
