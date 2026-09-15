@@ -235,7 +235,7 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
     }
 
 
-def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp_res, pkg_results):
+def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp_res, pkg_results, suite_duration=0.0):
     """Writes detailed markdown summary to $GITHUB_STEP_SUMMARY."""
     gh_summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if not gh_summary:
@@ -253,6 +253,7 @@ def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp
         "|:---|:---|",
         f"| **OS** | `{os_name}` (`{arch_name}`) |",
         f"| **Alya Compiler** | `{compiler_ver}` (branch: `{compiler_branch}`) |",
+        f"| **Total Run Duration** | `{suite_duration:.1f}s` |",
         f"| **Total Packages** | `{total}` |",
         f"| **Passed Packages** | `{passed_count} / {total}` |",
         f"| **Failed Packages** | `{failed_count}` |",
@@ -261,7 +262,7 @@ def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp
 
     if comp_res:
         status_icon = "✅ Passed" if comp_res["passed"] else "❌ Failed"
-        lines.append(f"### Compiler Tests: {status_icon} (`{comp_res['duration']:.1f}s`)")
+        lines.append(f"### 🦀 Compiler Internal Tests (`cargo test`): {status_icon} (`{comp_res['duration']:.1f}s`)")
         if not comp_res["passed"]:
             lines.append("<details><summary>Compiler Test Failure Log</summary>\n\n```text\n" + comp_res["output"] + "\n```\n</details>\n")
 
@@ -348,6 +349,7 @@ def main():
     )
 
     args = parser.parse_args()
+    suite_start = time.time()
     
     os_name = platform.system()
     arch_name = platform.machine()
@@ -422,12 +424,14 @@ def main():
         pkg_results.append(res)
 
     # 5. Print Terminal Summary Table
+    suite_duration = time.time() - suite_start
     print("\n" + "=" * 60)
     print(f"{COLOR_BOLD}                 ECOSYSTEM TEST SUMMARY{COLOR_RESET}")
     print("=" * 60)
     print(f"  Platform:         {os_name} ({arch_name})")
     print(f"  Compiler Version: {compiler_version}")
     print(f"  Compiler Branch:  {args.compiler_branch}")
+    print(f"  Total Duration:   {suite_duration:.1f}s")
     print("-" * 60)
 
     if comp_res:
@@ -456,6 +460,7 @@ def main():
         compiler_branch=args.compiler_branch,
         comp_res=comp_res,
         pkg_results=pkg_results,
+        suite_duration=suite_duration,
     )
 
     # 7. Exit Code
