@@ -54,6 +54,8 @@ Go to [Actions -> Ecosystem CI -> Run workflow](https://github.com/alya-lang/tes
 - **Compiler branch / ref**: `develop` (or any feature branch/tag)
 - **Packages**: `ALL` (or comma-separated: `http,json,crypto`)
 - **Run compiler tests**: `true`
+- **Sequential**: `false` (set `true` to force sequential test execution)
+- **Jobs**: Parallel worker count per package (e.g. `2`, `4`; default: CPU cores)
 
 ### 2. Scheduled Nightly Runs
 The test suite runs automatically every night at **02:00 UTC** against the latest `develop` branch of the compiler and `main` of all packages.
@@ -65,7 +67,7 @@ The test suite runs automatically every night at **02:00 UTC** against the lates
 The ecosystem test suite is fully standalone and runs seamlessly across Windows, macOS, and Linux using a single cross-platform Python runner:
 
 ```bash
-# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 20 packages):
+# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 20 packages in parallel):
 python scripts/run_ecosystem_tests.py
 
 # 2. Test specific packages only:
@@ -77,8 +79,14 @@ python scripts/run_ecosystem_tests.py --compiler-branch my-feature-branch
 # 4. Skip compiler unit tests and test packages directly:
 python scripts/run_ecosystem_tests.py --skip-compiler-tests
 
-# 5. Fast iteration with specific packages:
-python scripts/run_ecosystem_tests.py --packages "uuid,semver" --skip-compiler-tests
+# 5. Run tests sequentially (alyac test --sequential):
+python scripts/run_ecosystem_tests.py --sequential
+
+# 6. Specify worker thread count (alyac test -j 4):
+python scripts/run_ecosystem_tests.py --jobs 4
+
+# 7. Custom per-package timeout (default: 300s):
+python scripts/run_ecosystem_tests.py --timeout 180
 ```
 
 ### ⚙️ Runner Architecture & Self-Sufficiency

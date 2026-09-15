@@ -63,33 +63,59 @@ def log(msg, color=""):
     print(f"{prefix}{color}{msg}{COLOR_RESET}")
 
 
-def run_cmd(cmd, cwd=None, env=None, check=False, capture=False):
-    """Run a command with proper error logging and optional output capture."""
+def run_cmd(cmd, cwd=None, env=None, check=False, capture=False, timeout=None):
+    """Run a command with proper error logging, optional output capture, and timeout."""
     exec_env = os.environ.copy()
     if env:
         exec_env.update(env)
 
-    if capture:
-        res = subprocess.run(
-            cmd,
-            cwd=cwd,
-            env=exec_env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-    else:
-        res = subprocess.run(
-            cmd,
-            cwd=cwd,
-            env=exec_env,
+    try:
+        if capture:
+            res = subprocess.run(
+                cmd,
+                cwd=cwd,
+                env=exec_env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+            )
+        else:
+            res = subprocess.run(
+                cmd,
+                cwd=cwd,
+                env=exec_env,
+                timeout=timeout,
+            )
+    except subprocess.TimeoutExpired as e:
+        cmd_str = " ".join(str(c) for c in cmd)
+        log(f"Command timed out after {timeout}s: {cmd_str}", COLOR_RED)
+        stdout = e.stdout if isinstance(e.stdout, str) else (e.stdout.decode("utf-8", errors="replace") if e.stdout else "")
+        stderr = e.stderr if isinstance(e.stderr, str) else (e.stderr.decode("utf-8", errors="replace") if e.stderr else "")
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=-1,
+            stdout=(stdout or "") + f"\n[ERROR] Command timed out after {timeout} seconds.\n",
+            stderr=(stderr or ""),
         )
 
     if check and res.returncode != 0:
         raise subprocess.CalledProcessError(res.returncode, cmd)
     return res
+
+
+def clone_with_retry(cmd, cwd=None, retries=3, delay=2):
+    """Executes git clone with retries on transient network errors."""
+    for attempt in range(1, retries + 1):
+        res = run_cmd(cmd, cwd=cwd, capture=True, timeout=180)
+        if res.returncode == 0:
+            return True
+        if attempt < retries:
+            log(f"Git clone attempt {attempt}/{retries} failed, retrying in {delay}s...", COLOR_YELLOW)
+            time.sleep(delay)
+    return False
 
 
 def build_compiler(compiler_dir, profile="quick"):
@@ -166,20 +192,28 @@ def run_compiler_tests(compiler_dir):
     }
 
 
-def test_package(pkg_name, pkg_dir):
+def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
     """Runs fmt, install, and test on a single Alya package."""
     log(f"Testing Package: Lib/{pkg_name}...", COLOR_CYAN)
     start = time.time()
     
-    # 1. Format check
-    fmt_res = run_cmd(["alyac", "fmt", ".", "--check"], cwd=pkg_dir, capture=True)
+    # 1. Format check (timeout 60s)
+    fmt_res = run_cmd(["alyac", "fmt", ".", "--check"], cwd=pkg_dir, capture=True, timeout=60)
     
-    # 2. Dependency install if needed
+    # 2. Dependency install if needed (timeout 120s)
     if (pkg_dir / "alya.lock").is_file() or (pkg_dir / "alya.toml").is_file():
-        run_cmd(["alyac", "install"], cwd=pkg_dir, capture=True)
+        install_res = run_cmd(["alyac", "install"], cwd=pkg_dir, capture=True, timeout=120)
+        if install_res.returncode != 0:
+            log(f"  Notice: 'alyac install' returned code {install_res.returncode}", COLOR_YELLOW)
 
     # 3. Run test suite
-    test_res = run_cmd(["alyac", "test"], cwd=pkg_dir, capture=True)
+    test_cmd = ["alyac", "test"]
+    if sequential:
+        test_cmd.append("--sequential")
+    elif jobs:
+        test_cmd.extend(["-j", str(jobs)])
+
+    test_res = run_cmd(test_cmd, cwd=pkg_dir, capture=True, timeout=timeout)
     duration = time.time() - start
     passed = (test_res.returncode == 0)
 
@@ -290,6 +324,23 @@ def main():
         help="Skip running cargo test on the compiler itself.",
     )
     parser.add_argument(
+        "--sequential",
+        action="store_true",
+        help="Run package test suites sequentially (alyac test --sequential).",
+    )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=None,
+        help="Number of parallel worker jobs for package tests (default: CPU cores).",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Timeout in seconds for each package test run (default: 300).",
+    )
+    parser.add_argument(
         "--workspace-dir",
         type=Path,
         default=Path("workspace"),
@@ -311,13 +362,16 @@ def main():
         compiler_dir = workspace / "alya-compiler"
         if not compiler_dir.is_dir():
             log(f"Cloning compiler from {args.compiler_repo} (branch: {args.compiler_branch})...", COLOR_CYAN)
-            run_cmd([
+            clone_success = clone_with_retry([
                 "git", "clone",
                 "--depth", "1",
                 "--branch", args.compiler_branch,
                 args.compiler_repo,
                 str(compiler_dir),
-            ], check=True)
+            ])
+            if not clone_success:
+                log(f"Failed to clone compiler repo after retries: {args.compiler_repo}", COLOR_RED)
+                sys.exit(1)
 
     # 2. Build Compiler
     _, compiler_version = build_compiler(compiler_dir, profile="quick")
@@ -346,19 +400,25 @@ def main():
             pkg_dir = workspace / "packages" / pkg_name
             if not pkg_dir.is_dir():
                 pkg_repo = f"https://github.com/alya-lang/{pkg_name}.git"
-                run_cmd([
+                clone_with_retry([
                     "git", "clone",
                     "--depth", "1",
                     "--branch", "main",
                     pkg_repo,
                     str(pkg_dir),
-                ], capture=True)
+                ])
 
         if not pkg_dir.is_dir():
             log(f"Warning: Package directory {pkg_dir} could not be resolved. Skipping.", COLOR_YELLOW)
             continue
 
-        res = test_package(pkg_name, pkg_dir)
+        res = test_package(
+            pkg_name,
+            pkg_dir,
+            sequential=args.sequential,
+            jobs=args.jobs,
+            timeout=args.timeout,
+        )
         pkg_results.append(res)
 
     # 5. Print Terminal Summary Table
