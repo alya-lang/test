@@ -41,6 +41,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`toml`](https://github.com/alya-lang/toml) | `alya-lang/toml` | TOML v1.0.0 parser and serializer |
 | [`url`](https://github.com/alya-lang/url) | `alya-lang/url` | WHATWG & RFC 3986 compliant URL parser and builder |
 | [`uuid`](https://github.com/alya-lang/uuid) | `alya-lang/uuid` | RFC 4122 / RFC 9562 UUID generator and validator |
+| [`yaml`](https://github.com/alya-lang/yaml) | `alya-lang/yaml` | Fast, zero-dependency YAML 1.2 parser and serializer |
 
 ---
 
