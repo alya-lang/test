@@ -29,6 +29,7 @@ OFFICIAL_PACKAGES = [
     "jwt",
     "logger",
     "mime",
+    "mustache",
     "rand",
     "semver",
     "sqlite",
