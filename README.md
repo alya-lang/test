@@ -24,7 +24,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | Package | Repository | Description |
 |:---|:---|:---|
 | [`cli`](https://github.com/alya-lang/cli) | `alya-lang/cli` | Command-line interface, argument parsing, flag handling |
-| [`compress`](https://github.com/alya-lang/compress) | `alya-lang/compress` | 9 compression engines (Brotli, Bzip2, Deflate, Gzip, LZ4, Snappy, Szip, Zlib, Zstd) & ZIP archives |
+| [`compress`](https://github.com/alya-lang/compress) | `alya-lang/compress` | 9 compression modules + full LZ family (LZ4, LZ77, LZ78, LZJB, LZMA, LZMA2, LZSS, LZW) & ZIP archives |
 | [`crypto`](https://github.com/alya-lang/crypto) | `alya-lang/crypto` | Cryptography and hashing library |
 | [`csv`](https://github.com/alya-lang/csv) | `alya-lang/csv` | RFC 4180 CSV and TSV parser/serializer |
 | [`dotenv`](https://github.com/alya-lang/dotenv) | `alya-lang/dotenv` | Environment variable loader and interpolator |
