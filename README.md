@@ -5,7 +5,7 @@
 
 Official multi-platform integration testing and ecosystem CI for the [Alya](https://github.com/alya-lang/alya) programming language.
 
-This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 18 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
+This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 19 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
 
 ---
 
@@ -13,7 +13,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 - **Multi-OS Matrix:** Verifies the full ecosystem on Linux, Windows, and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
-- **Selective Package Testing:** Run tests for all 18 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
+- **Selective Package Testing:** Run tests for all 19 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
 - **Standalone & Cross-Platform:** Single universal runner (`scripts/run_ecosystem_tests.py`) working seamlessly across Windows, Linux, and macOS without requiring a monorepo setup.
 
@@ -63,7 +63,7 @@ The test suite runs automatically every night at **02:00 UTC** against the lates
 The ecosystem test suite is fully standalone and runs seamlessly across Windows, macOS, and Linux using a single cross-platform Python runner:
 
 ```bash
-# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 18 packages):
+# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 19 packages):
 python scripts/run_ecosystem_tests.py
 
 # 2. Test specific packages only:

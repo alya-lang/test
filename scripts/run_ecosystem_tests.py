@@ -38,6 +38,7 @@ OFFICIAL_PACKAGES = [
     "toml",
     "url",
     "uuid",
+    "yaml",
 ]
 
 # ANSI color codes
