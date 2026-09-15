@@ -13,7 +13,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 - **Multi-OS Matrix:** Verifies the full ecosystem on Linux, Windows, and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
-- **Selective Package Testing:** Run tests for all 18 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`).
+- **Selective Package Testing:** Run tests for all 18 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
 - **Standalone & Cross-Platform:** Single universal runner (`scripts/run_ecosystem_tests.py`) working seamlessly across Windows, Linux, and macOS without requiring a monorepo setup.
 
@@ -32,6 +32,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`jwt`](https://github.com/alya-lang/jwt) | `alya-lang/jwt` | JSON Web Token (RFC 7519) library |
 | [`logger`](https://github.com/alya-lang/logger) | `alya-lang/logger` | Leveled structured logging, rotation, and formats |
 | [`mime`](https://github.com/alya-lang/mime) | `alya-lang/mime` | MIME and media type detection |
+| [`mustache`](https://github.com/alya-lang/mustache) | `alya-lang/mustache` | Fast, zero-dependency Mustache template engine |
 | [`rand`](https://github.com/alya-lang/rand) | `alya-lang/rand` | PRNG, UUID v4/v7, ULID, and sampling toolkit |
 | [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser and checker |
 | [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | SQLite3 bindings with bundled C engine |
