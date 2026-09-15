@@ -95,6 +95,18 @@ python scripts/run_ecosystem_tests.py --timeout 180
 - **Custom Local Paths (Optional):** If you want to test against specific local directories, simply pass `--compiler-dir <path>` or `--packages-dir <path>`.
 - **Automatic Toolchain Provisioning:** Sets `ALYA_TOOLCHAIN_AUTO_INSTALL=1` and automatically configures minimal C/Assembly build tools if no host GCC or Clang is detected in `PATH`.
 
+### 📐 Template Compliance Checking
+
+Verify that all official ecosystem packages follow the canonical template standard (required files, exact README headings/badges, alya.toml spec, zero hardcoded version functions, zero legacy aliases, and pure English):
+
+```bash
+# Verify compliance for all packages:
+python scripts/check_template_compliance.py
+
+# Verify compliance for specific packages:
+python scripts/check_template_compliance.py --packages "json,http,rand"
+```
+
 ---
 
 ## 📄 License

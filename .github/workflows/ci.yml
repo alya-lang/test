@@ -37,6 +37,23 @@ permissions:
   contents: read
 
 jobs:
+  template-compliance:
+    name: Template Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Verify Package Template Compliance
+        shell: bash
+        run: |
+          python3 scripts/check_template_compliance.py --packages "${{ inputs.packages || 'ALL' }}"
+
   ecosystem-test:
     name: Ecosystem (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
