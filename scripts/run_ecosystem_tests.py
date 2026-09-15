@@ -21,6 +21,7 @@ from pathlib import Path
 # Official Alya ecosystem packages
 OFFICIAL_PACKAGES = [
     "cli",
+    "compress",
     "crypto",
     "csv",
     "dotenv",
