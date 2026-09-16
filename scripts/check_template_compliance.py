@@ -65,6 +65,7 @@ OFFICIAL_PACKAGES = [
     "crypto",
     "csv",
     "dotenv",
+    "event",
     "http",
     "json",
     "jwt",
