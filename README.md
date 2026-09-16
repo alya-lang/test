@@ -1,4 +1,4 @@
-﻿# Alya Ecosystem CI & Integration Test Suite
+# Alya Ecosystem CI & Integration Test Suite
 
 [![Ecosystem CI](https://github.com/alya-lang/test/actions/workflows/ci.yml/badge.svg)](https://github.com/alya-lang/test/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/alya-lang/test?color=blue&label=License)](LICENSE)
@@ -23,26 +23,26 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 | Package | Repository | Description |
 |:---|:---|:---|
-| [`cli`](https://github.com/alya-lang/cli) | `alya-lang/cli` | Command-line interface, argument parsing, flag handling |
-| [`compress`](https://github.com/alya-lang/compress) | `alya-lang/compress` | 9 compression modules + full LZ family (LZ4, LZ77, LZ78, LZJB, LZMA, LZMA2, LZSS, LZW) & ZIP archives |
-| [`crypto`](https://github.com/alya-lang/crypto) | `alya-lang/crypto` | Cryptography and hashing library |
-| [`csv`](https://github.com/alya-lang/csv) | `alya-lang/csv` | RFC 4180 CSV and TSV parser/serializer |
-| [`dotenv`](https://github.com/alya-lang/dotenv) | `alya-lang/dotenv` | Environment variable loader and interpolator |
-| [`http`](https://github.com/alya-lang/http) | `alya-lang/http` | HTTP client, server, router, and middleware toolkit |
-| [`json`](https://github.com/alya-lang/json) | `alya-lang/json` | RFC 8259 JSON parser, serializer, builder, and JSONPath |
-| [`jwt`](https://github.com/alya-lang/jwt) | `alya-lang/jwt` | JSON Web Token (RFC 7519) library |
-| [`logger`](https://github.com/alya-lang/logger) | `alya-lang/logger` | Leveled structured logging, rotation, and formats |
-| [`mime`](https://github.com/alya-lang/mime) | `alya-lang/mime` | MIME and media type detection |
-| [`mustache`](https://github.com/alya-lang/mustache) | `alya-lang/mustache` | Fast, zero-dependency Mustache template engine |
-| [`rand`](https://github.com/alya-lang/rand) | `alya-lang/rand` | PRNG, UUID v4/v7, ULID, and sampling toolkit |
-| [`regex`](https://github.com/alya-lang/regex) | `alya-lang/regex` | Modern regular expression engine with linear-time matching, character classes, and capture groups |
-| [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser and checker |
-| [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | SQLite3 bindings with bundled C engine |
-| [`template`](https://github.com/alya-lang/template) | `alya-lang/template` | Standard package scaffold template |
-| [`term`](https://github.com/alya-lang/term) | `alya-lang/term` | Modern terminal UI toolkit: ANSI styling, tables, trees, progress, charts, prompts |
-| [`toml`](https://github.com/alya-lang/toml) | `alya-lang/toml` | TOML v1.0.0 parser and serializer |
-| [`url`](https://github.com/alya-lang/url) | `alya-lang/url` | WHATWG & RFC 3986 compliant URL parser and builder |
-| [`uuid`](https://github.com/alya-lang/uuid) | `alya-lang/uuid` | RFC 4122 / RFC 9562 UUID generator and validator |
+| [`cli`](https://github.com/alya-lang/cli) | `alya-lang/cli` | Modern command-line interface, argument parsing, flag handling, and subcommand router |
+| [`compress`](https://github.com/alya-lang/compress) | `alya-lang/compress` | 10 compression modules + full LZ family (LZ4, LZ77, LZ78, LZJB, LZMA, LZMA2, LZSS, LZW), Huffman & ZIP archives |
+| [`crypto`](https://github.com/alya-lang/crypto) | `alya-lang/crypto` | Comprehensive cryptography, hashing (SHA-2/3, BLAKE2s, Keccak, HMAC), AEAD (ChaCha20-Poly1305), KDF, and encodings |
+| [`csv`](https://github.com/alya-lang/csv) | `alya-lang/csv` | RFC-4180 compliant CSV and TSV parser, serializer, and data processor |
+| [`dotenv`](https://github.com/alya-lang/dotenv) | `alya-lang/dotenv` | Environment variable (.env) parser, interpolation, and configuration loader |
+| [`http`](https://github.com/alya-lang/http) | `alya-lang/http` | Production-ready HTTP client, server, router, compression, and middleware toolkit |
+| [`json`](https://github.com/alya-lang/json) | `alya-lang/json` | RFC 8259 JSON parser, recursive serializer, JSONPath, JSON Schema validator, NDJSON, and builder |
+| [`jwt`](https://github.com/alya-lang/jwt) | `alya-lang/jwt` | Native RFC 7519 JSON Web Token library with HMAC-SHA256 and fluent builder |
+| [`logger`](https://github.com/alya-lang/logger) | `alya-lang/logger` | Structured logging, leveled output, JSON format, and file rotation |
+| [`mime`](https://github.com/alya-lang/mime) | `alya-lang/mime` | MIME type and media type detection library |
+| [`mustache`](https://github.com/alya-lang/mustache) | `alya-lang/mustache` | Fast, zero-dependency Mustache template engine (variables, sections, partials, HTML escaping) |
+| [`rand`](https://github.com/alya-lang/rand) | `alya-lang/rand` | Modern pseudo-random number generator (PRNG), statistical distributions, and sampling toolkit |
+| [`regex`](https://github.com/alya-lang/regex) | `alya-lang/regex` | High-performance regular expression engine with named groups, lookarounds, backreferences, and Unicode property classes |
+| [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser, comparator, bumper, and range checker |
+| [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | Fast and lightweight SQLite3 bindings with bundled C engine (zero external dependencies) |
+| [`template`](https://github.com/alya-lang/template) | `alya-lang/template` | Official template repository for all future Alya packages (GitHub Template enabled) |
+| [`term`](https://github.com/alya-lang/term) | `alya-lang/term` | Modern terminal UI toolkit: ANSI styling, tables, callouts, trees, progress bars, charts, prompts, cursor controls |
+| [`toml`](https://github.com/alya-lang/toml) | `alya-lang/toml` | TOML v1.0.0 parser, serializer, and TomlBuilder API |
+| [`url`](https://github.com/alya-lang/url) | `alya-lang/url` | WHATWG and RFC 3986 compliant URL parser, serializer, normalizer, and query string library |
+| [`uuid`](https://github.com/alya-lang/uuid) | `alya-lang/uuid` | RFC 4122 UUID v4, RFC 9562 UUID v7, ULID, and NanoID toolkit |
 | [`yaml`](https://github.com/alya-lang/yaml) | `alya-lang/yaml` | Fast, zero-dependency YAML 1.2 parser and serializer |
 
 ---
