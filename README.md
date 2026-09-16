@@ -35,7 +35,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`mime`](https://github.com/alya-lang/mime) | `alya-lang/mime` | MIME type and media type detection library |
 | [`mustache`](https://github.com/alya-lang/mustache) | `alya-lang/mustache` | Fast, zero-dependency Mustache template engine (variables, sections, partials, HTML escaping) |
 | [`rand`](https://github.com/alya-lang/rand) | `alya-lang/rand` | Modern pseudo-random number generator (PRNG), statistical distributions, and sampling toolkit |
-| [`regex`](https://github.com/alya-lang/regex) | `alya-lang/regex` | High-performance regular expression engine with named groups, lookarounds, backreferences, and Unicode property classes |
+| [`regex`](https://github.com/alya-lang/regex) | `alya-lang/regex` | High-performance regular expression engine with named groups, lookarounds, and global multilingual Unicode support |
 | [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser, comparator, bumper, and range checker |
 | [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | Fast and lightweight SQLite3 bindings with bundled C engine (zero external dependencies) |
 | [`template`](https://github.com/alya-lang/template) | `alya-lang/template` | Official template repository for all future Alya packages (GitHub Template enabled) |
