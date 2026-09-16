@@ -3,26 +3,53 @@
 check_template_compliance.py
 
 Comprehensive compliance and linter suite for official Alya ecosystem packages.
-Verifies that all official packages strictly conform to the canonical template standards:
-1. Standard required files (alya.toml, README.md, LICENSE, .gitignore, .github/workflows/ci.yml)
-2. README.md structure, badge standards, and required headings in exact order:
-   - ## 🌟 Features
-   - ## 📁 Project Architecture
-   - ## 📦 Installation
-   - ## 🚀 Quick Start
-   - ## 📖 API Reference
-   - ## 🧪 Running Tests & Benchmarks
-   - ## 🤝 Contributing
-   - ## 📄 License
-3. alya.toml manifest completeness (name, version, alya-version, entry, description, license, repository)
-4. Zero hardcoded package version functions or constants in source code
-5. Zero deprecated / legacy backward-compatibility functions or fallbacks
-6. Strict English language compliance in source code, comments, and documentation
+Verifies that all official packages strictly conform to canonical template and repository standards:
+
+1. Standard Required Files:
+   - alya.toml, README.md, LICENSE, .gitignore, .github/workflows/ci.yml
+
+2. README.md Structure & Standards:
+   - Header: # <package_name> (or # {{PACKAGE_NAME}} for template)
+   - 4 Required Badges: CI, License, Alya version, Package version
+   - 8 Required Headings in Canonical Order:
+     - ## 🌟 Features
+     - ## 📁 Project Architecture
+     - ## 📦 Installation
+     - ## 🚀 Quick Start
+     - ## 📖 API Reference
+     - ## 🧪 Running Tests & Benchmarks
+     - ## 🤝 Contributing
+     - ## 📄 License
+
+3. alya.toml Manifest Integrity:
+   - [package], name, version, alya-version, entry, description, license = "MIT", repository
+
+4. Zero Hardcoded Package Versions:
+   - No <pkg>_version() or hardcoded version strings in source code
+
+5. Zero Legacy Backward-Compatibility / Fallbacks:
+   - No deprecated alias functions or obsolete struct fallbacks
+
+6. Strict English Language Compliance:
+   - No non-English / Turkish comments or words (except test fixtures)
+
+7. GitHub Repository Settings & Metadata (Online Check):
+   - Default branch: main
+   - Website / Homepage: https://github.com/alya-lang/alya
+   - Description: Non-empty and matches alya.toml description
+   - Topics: Includes 'alya', 'alya-lang', 'package', and <pkg_name>
+   - Wiki: Disabled (has_wiki == false)
+   - Projects: Disabled (has_projects == false)
+   - Discussions: Disabled (has_discussions == false)
+   - Issues: Enabled (has_issues == true)
+   - Template Flag: Enabled for 'template', disabled for all others
+   - Dependency Graph / Vulnerability Alerts: Active (vulnerability-alerts == enabled)
 
 Compatible with Linux, macOS, and Windows. Runs standalone locally or in GitHub Actions CI.
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -108,8 +135,71 @@ def run_cmd(cmd, cwd=None, capture=True, timeout=120):
         )
 
 
-def check_package_compliance(pkg_name: str, pkg_dir: Path) -> dict:
-    """Evaluates a package against all official template compliance rules."""
+def extract_manifest_description(manifest_path: Path) -> str:
+    """Extracts package description string from alya.toml."""
+    if not manifest_path.is_file():
+        return ""
+    for line in manifest_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line_str = line.strip()
+        if line_str.startswith("description"):
+            parts = line_str.split("=", 1)
+            if len(parts) == 2:
+                return parts[1].strip().strip('"\'')
+    return ""
+
+
+def fetch_github_metadata(pkg_name: str) -> tuple:
+    """
+    Fetches GitHub repository settings and vulnerability-alerts status.
+    Returns (repo_dict, vuln_alerts_enabled, error_string).
+    """
+    # 1. Try 'gh' CLI if available
+    gh_bin = shutil.which("gh")
+    if gh_bin:
+        res = run_cmd(["gh", "api", f"repos/alya-lang/{pkg_name}"], capture=True, timeout=30)
+        if res.returncode == 0:
+            try:
+                repo_data = json.loads(res.stdout)
+                vuln_res = run_cmd(["gh", "api", f"repos/alya-lang/{pkg_name}/vulnerability-alerts"], capture=True, timeout=15)
+                vuln_enabled = (vuln_res.returncode == 0)
+                return repo_data, vuln_enabled, None
+            except Exception as e:
+                return None, False, f"JSON parse error from gh api: {e}"
+
+    # 2. Try urllib with GITHUB_TOKEN if gh is not available
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        import urllib.error
+        import urllib.request
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "alya-template-compliance-checker",
+        }
+        try:
+            req = urllib.request.Request(f"https://api.github.com/repos/alya-lang/{pkg_name}", headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                repo_data = json.loads(resp.read().decode("utf-8"))
+
+            vuln_enabled = False
+            try:
+                vuln_req = urllib.request.Request(f"https://api.github.com/repos/alya-lang/{pkg_name}/vulnerability-alerts", headers=headers)
+                with urllib.request.urlopen(vuln_req, timeout=15) as v_resp:
+                    vuln_enabled = (v_resp.status in (200, 204))
+            except urllib.error.HTTPError as he:
+                vuln_enabled = (he.code in (200, 204))
+            except Exception:
+                vuln_enabled = False
+
+            return repo_data, vuln_enabled, None
+        except Exception as e:
+            return None, False, f"GitHub REST API error: {e}"
+
+    return None, False, "No GitHub credentials found (neither 'gh' CLI nor GITHUB_TOKEN available)"
+
+
+def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = True) -> dict:
+    """Evaluates a package against all official template and repository compliance rules."""
     violations = []
     warnings = []
 
@@ -128,8 +218,10 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path) -> dict:
 
     # --- Rule 2: alya.toml Manifest Integrity ---
     manifest_path = pkg_dir / "alya.toml"
+    manifest_desc = ""
     if manifest_path.is_file():
         content = manifest_path.read_text(encoding="utf-8", errors="replace")
+        manifest_desc = extract_manifest_description(manifest_path)
         if "[package]" not in content:
             violations.append("`alya.toml` is missing `[package]` header")
         if f'name = "{pkg_name}"' not in content and f"name = '{pkg_name}'" not in content:
@@ -173,26 +265,16 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path) -> dict:
         # 3.3 Required Headings in Exact Order
         found_headings = [l.strip() for l in lines if l.startswith("## ")]
         
-        # Check presence of each required heading
         for req in REQUIRED_HEADINGS:
             if req not in found_headings:
-                # Check if slightly mismatched
                 close = [h for h in found_headings if req.split()[-1] in h]
                 if close:
                     violations.append(f"README heading mismatch: found `{close[0]}`, expected `{req}`")
                 else:
                     violations.append(f"README is missing required section: `{req}`")
 
-        # Verify relative ordering of the standard headings
-        indices = []
-        for req in REQUIRED_HEADINGS:
-            if req in found_headings:
-                indices.append(found_headings.index(req))
-            else:
-                indices.append(-1)
-        
-        valid_indices = [i for i in indices if i != -1]
-        if valid_indices != sorted(valid_indices):
+        indices = [found_headings.index(req) for req in REQUIRED_HEADINGS if req in found_headings]
+        if indices != sorted(indices):
             violations.append("README standard sections are not in canonical order")
 
     # --- Rule 4: Zero Hardcoded Package Versions in Code ---
@@ -200,7 +282,6 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path) -> dict:
     if src_dir.is_dir():
         for alya_file in src_dir.glob("**/*.alya"):
             code = alya_file.read_text(encoding="utf-8", errors="replace")
-            # Prohibit <pkg>_version() functions returning package version strings
             if re.search(r"function\s+\w+_version\s*\(\s*\)", code):
                 violations.append(f"Hardcoded version function found in `{alya_file.relative_to(pkg_dir)}`")
 
@@ -222,7 +303,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path) -> dict:
             and f.suffix in (".alya", ".md", ".toml", ".yml")
             and ".alya" not in f.parts
             and ".git" not in f.parts
-            and "tests" not in f.parts  # Allow UTF-8 unicode test fixtures in test files
+            and "tests" not in f.parts
         ):
             ftext = f.read_text(encoding="utf-8", errors="replace")
             turkish_matches = re.findall(
@@ -238,6 +319,66 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path) -> dict:
                 violations.append(
                     f"Turkish phrase 'Geriye Dönük' found in `{f.relative_to(pkg_dir)}`"
                 )
+
+    # --- Rule 7: GitHub Repository Settings & Metadata ---
+    if check_github:
+        repo_data, vuln_enabled, gh_err = fetch_github_metadata(pkg_name)
+        if gh_err:
+            warnings.append(f"GitHub metadata check skipped: {gh_err}")
+        elif repo_data:
+            # 7.1 Default branch must be 'main'
+            def_branch = repo_data.get("default_branch")
+            if def_branch != "main":
+                violations.append(f"GitHub default branch is `{def_branch}`, expected `main`")
+
+            # 7.2 Website / Homepage URL
+            hp = repo_data.get("homepage") or ""
+            if hp.rstrip("/") != "https://github.com/alya-lang/alya":
+                violations.append(f"GitHub repository website is `{hp}`, expected `https://github.com/alya-lang/alya`")
+
+            # 7.3 Repository Description
+            gh_desc = (repo_data.get("description") or "").strip()
+            if not gh_desc:
+                violations.append("GitHub repository description is empty")
+            elif pkg_name != "template" and manifest_desc:
+                if gh_desc.lower() != manifest_desc.lower():
+                    violations.append(f"GitHub description does not match alya.toml description:\n        GitHub:    `{gh_desc}`\n        alya.toml: `{manifest_desc}`")
+
+            # 7.4 Topics (Tags)
+            topics = repo_data.get("topics") or []
+            required_topics = ["alya", "alya-lang", "package"]
+            if pkg_name != "template":
+                required_topics.append(pkg_name)
+            missing_topics = [t for t in required_topics if t not in topics]
+            if missing_topics:
+                violations.append(f"GitHub repository topics missing required tag(s): `{', '.join(missing_topics)}` (found: {topics})")
+
+            # 7.5 Wiki must be disabled
+            if repo_data.get("has_wiki"):
+                violations.append("GitHub Wiki is enabled (must be disabled; documentation lives in README.md)")
+
+            # 7.6 Projects must be disabled
+            if repo_data.get("has_projects"):
+                violations.append("GitHub Projects is enabled (must be disabled)")
+
+            # 7.7 Discussions must be disabled
+            if repo_data.get("has_discussions"):
+                violations.append("GitHub Discussions is enabled (must be disabled)")
+
+            # 7.8 Issues must be enabled
+            if not repo_data.get("has_issues"):
+                violations.append("GitHub Issues is disabled (must be enabled)")
+
+            # 7.9 Template repository flag
+            is_tmpl = repo_data.get("is_template", False)
+            if pkg_name == "template" and not is_tmpl:
+                violations.append("GitHub repository must be a template repository (`is_template = true`)")
+            elif pkg_name != "template" and is_tmpl:
+                violations.append("GitHub repository should not be a template repository (`is_template = false`)")
+
+            # 7.10 Dependency Graph / Vulnerability Alerts
+            if not vuln_enabled:
+                violations.append("GitHub Dependency Graph / Vulnerability Alerts is disabled (must be enabled)")
 
     passed = len(violations) == 0
     return {
@@ -308,9 +449,16 @@ def main():
         default="ALL",
         help="Comma-separated package names or 'ALL' (default: ALL)",
     )
+    parser.add_argument(
+        "--skip-github",
+        action="store_true",
+        help="Skip remote GitHub repository metadata and settings verification (offline mode)",
+    )
     args = parser.parse_args()
 
-    log(f"Starting Alya Package Template Compliance Audit...", COLOR_BOLD + COLOR_CYAN)
+    check_github = not args.skip_github
+
+    log(f"Starting Alya Package Template & Repository Compliance Audit...", COLOR_BOLD + COLOR_CYAN)
 
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent
@@ -318,7 +466,6 @@ def main():
     # Determine packages directory
     packages_dir = args.packages_dir
     if packages_dir is None:
-        # Check if running adjacent to local Lib directory
         adjacent_lib = (repo_root.parent / "Lib").resolve()
         if adjacent_lib.is_dir() and (adjacent_lib / "rand" / "alya.toml").is_file():
             packages_dir = adjacent_lib
@@ -332,6 +479,7 @@ def main():
         target_packages = [p.strip() for p in args.packages.split(",") if p.strip()]
 
     log(f"Packages Directory: {packages_dir}", COLOR_GRAY)
+    log(f"GitHub Verification: {'ENABLED (Checks Repo Description, Tags, Website, Wiki/Projects/Discussions, Dependency Graph)' if check_github else 'DISABLED (--skip-github)'}", COLOR_GRAY)
     log(f"Target Packages ({len(target_packages)}): {', '.join(target_packages)}\n")
 
     results = []
@@ -357,7 +505,7 @@ def main():
                 has_failures = True
                 continue
 
-        res = check_package_compliance(pkg, pkg_path)
+        res = check_package_compliance(pkg, pkg_path, check_github=check_github)
         results.append(res)
 
         if res["passed"]:
@@ -368,6 +516,9 @@ def main():
                 print(f"      {COLOR_RED}• {v}{COLOR_RESET}")
             has_failures = True
 
+        for w in res.get("warnings", []):
+            print(f"      {COLOR_YELLOW}⚠️  {w}{COLOR_RESET}")
+
     # Write GitHub Summary
     write_github_summary(results)
 
@@ -377,7 +528,7 @@ def main():
 
     print("\n" + "═" * 60)
     if not has_failures:
-        log(f"🎉 All {total} package(s) fully comply with template specifications!", COLOR_BOLD + COLOR_GREEN)
+        log(f"🎉 All {total} package(s) fully comply with template & GitHub repository specifications!", COLOR_BOLD + COLOR_GREEN)
         sys.exit(0)
     else:
         log(f"❌ Compliance Audit Failed: {passed} passed, {failed} failed.", COLOR_BOLD + COLOR_RED)

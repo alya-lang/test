@@ -51,6 +51,8 @@ jobs:
 
       - name: Verify Package Template Compliance
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 scripts/check_template_compliance.py --packages "${{ inputs.packages || 'ALL' }}"
 
