@@ -72,6 +72,7 @@ OFFICIAL_PACKAGES = [
     "mime",
     "mustache",
     "rand",
+    "regex",
     "semver",
     "sqlite",
     "template",

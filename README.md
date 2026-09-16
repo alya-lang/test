@@ -1,11 +1,11 @@
-# Alya Ecosystem CI & Integration Test Suite
+﻿# Alya Ecosystem CI & Integration Test Suite
 
 [![Ecosystem CI](https://github.com/alya-lang/test/actions/workflows/ci.yml/badge.svg)](https://github.com/alya-lang/test/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/alya-lang/test?color=blue&label=License)](LICENSE)
 
 Official multi-platform integration testing and ecosystem CI for the [Alya](https://github.com/alya-lang/alya) programming language.
 
-This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 20 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
+This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 21 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
 
 ---
 
@@ -13,7 +13,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 - **Multi-OS Matrix:** Verifies the full ecosystem on Linux, Windows, and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
-- **Selective Package Testing:** Run tests for all 20 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
+- **Selective Package Testing:** Run tests for all 21 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
 - **Standalone & Cross-Platform:** Single universal runner (`scripts/run_ecosystem_tests.py`) working seamlessly across Windows, Linux, and macOS without requiring a monorepo setup.
 
@@ -35,6 +35,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`mime`](https://github.com/alya-lang/mime) | `alya-lang/mime` | MIME and media type detection |
 | [`mustache`](https://github.com/alya-lang/mustache) | `alya-lang/mustache` | Fast, zero-dependency Mustache template engine |
 | [`rand`](https://github.com/alya-lang/rand) | `alya-lang/rand` | PRNG, UUID v4/v7, ULID, and sampling toolkit |
+| [`regex`](https://github.com/alya-lang/regex) | `alya-lang/regex` | Modern regular expression engine with linear-time matching, character classes, and capture groups |
 | [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser and checker |
 | [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | SQLite3 bindings with bundled C engine |
 | [`template`](https://github.com/alya-lang/template) | `alya-lang/template` | Standard package scaffold template |
@@ -67,7 +68,7 @@ The test suite runs automatically every night at **02:00 UTC** against the lates
 The ecosystem test suite is fully standalone and runs seamlessly across Windows, macOS, and Linux using a single cross-platform Python runner:
 
 ```bash
-# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 20 packages in parallel):
+# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 21 packages in parallel):
 python scripts/run_ecosystem_tests.py
 
 # 2. Test specific packages only:
