@@ -41,6 +41,7 @@ OFFICIAL_PACKAGES = [
     "toml",
     "url",
     "uuid",
+    "uv",
     "yaml",
 ]
 
