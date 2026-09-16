@@ -148,11 +148,70 @@ def extract_manifest_description(manifest_path: Path) -> str:
     return ""
 
 
+def check_github_dependency_graph(pkg_name: str) -> bool:
+    """
+    Verifies that GitHub Dependency Graph is active on the repository
+    (Insights -> Dependency graph: https://github.com/alya-lang/<pkg>/network/dependencies).
+    Accessible publicly without requiring repository admin tokens in CI.
+    """
+    import urllib.request
+    try:
+        url = f"https://github.com/alya-lang/{pkg_name}/network/dependencies"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            if resp.status == 200:
+                html = resp.read().decode("utf-8", errors="replace")
+                if "Dependency graph" in html or "Dependencies" in html:
+                    return True
+    except Exception:
+        pass
+
+    # Fallback to vulnerability-alerts API if running with admin rights
+    gh_bin = shutil.which("gh")
+    if gh_bin:
+        res = run_cmd(["gh", "api", f"repos/alya-lang/{pkg_name}/vulnerability-alerts"], capture=True, timeout=10)
+        if res.returncode == 0:
+            return True
+
+    return False
+
+
+def check_github_packages_sidebar_disabled(pkg_name: str) -> bool:
+    """
+    Verifies that 'Packages' section is disabled on the repository homepage sidebar
+    ('Include in the home page' -> Packages disabled).
+    """
+    import urllib.request
+    try:
+        url = f"https://github.com/alya-lang/{pkg_name}"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            if resp.status == 200:
+                html = resp.read().decode("utf-8", errors="replace")
+                has_packages_sidebar = (
+                    bool(re.search(r'SidebarSection[\s\S]*?<span>Packages</span>', html))
+                    or ("No packages published" in html)
+                )
+                return not has_packages_sidebar
+    except Exception:
+        pass
+    return True
+
+
 def fetch_github_metadata(pkg_name: str) -> tuple:
     """
-    Fetches GitHub repository settings and vulnerability-alerts status.
-    Returns (repo_dict, vuln_alerts_enabled, error_string).
+    Fetches GitHub repository settings, dependency graph status, and sidebar packages status.
+    Returns (repo_dict, dep_graph_enabled, packages_sidebar_disabled, error_string).
     """
+    dep_graph_enabled = check_github_dependency_graph(pkg_name)
+    packages_disabled = check_github_packages_sidebar_disabled(pkg_name)
+
     # 1. Try 'gh' CLI if available
     gh_bin = shutil.which("gh")
     if gh_bin:
@@ -160,42 +219,27 @@ def fetch_github_metadata(pkg_name: str) -> tuple:
         if res.returncode == 0:
             try:
                 repo_data = json.loads(res.stdout)
-                vuln_res = run_cmd(["gh", "api", f"repos/alya-lang/{pkg_name}/vulnerability-alerts"], capture=True, timeout=15)
-                vuln_enabled = (vuln_res.returncode == 0)
-                return repo_data, vuln_enabled, None
+                return repo_data, dep_graph_enabled, packages_disabled, None
             except Exception as e:
-                return None, False, f"JSON parse error from gh api: {e}"
+                return None, dep_graph_enabled, packages_disabled, f"JSON parse error from gh api: {e}"
 
-    # 2. Try urllib with GITHUB_TOKEN if gh is not available
+    # 2. Try urllib with GITHUB_TOKEN or unauthenticated REST API fallback
     token = os.environ.get("GITHUB_TOKEN")
+    import urllib.error
+    import urllib.request
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "alya-template-compliance-checker",
+    }
     if token:
-        import urllib.error
-        import urllib.request
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "alya-template-compliance-checker",
-        }
-        try:
-            req = urllib.request.Request(f"https://api.github.com/repos/alya-lang/{pkg_name}", headers=headers)
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                repo_data = json.loads(resp.read().decode("utf-8"))
-
-            vuln_enabled = False
-            try:
-                vuln_req = urllib.request.Request(f"https://api.github.com/repos/alya-lang/{pkg_name}/vulnerability-alerts", headers=headers)
-                with urllib.request.urlopen(vuln_req, timeout=15) as v_resp:
-                    vuln_enabled = (v_resp.status in (200, 204))
-            except urllib.error.HTTPError as he:
-                vuln_enabled = (he.code in (200, 204))
-            except Exception:
-                vuln_enabled = False
-
-            return repo_data, vuln_enabled, None
-        except Exception as e:
-            return None, False, f"GitHub REST API error: {e}"
-
-    return None, False, "No GitHub credentials found (neither 'gh' CLI nor GITHUB_TOKEN available)"
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        req = urllib.request.Request(f"https://api.github.com/repos/alya-lang/{pkg_name}", headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            repo_data = json.loads(resp.read().decode("utf-8"))
+        return repo_data, dep_graph_enabled, packages_disabled, None
+    except Exception as e:
+        return None, dep_graph_enabled, packages_disabled, f"GitHub REST API error: {e}"
 
 
 def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = True) -> dict:
@@ -322,7 +366,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
 
     # --- Rule 7: GitHub Repository Settings & Metadata ---
     if check_github:
-        repo_data, vuln_enabled, gh_err = fetch_github_metadata(pkg_name)
+        repo_data, dep_graph_enabled, packages_disabled, gh_err = fetch_github_metadata(pkg_name)
         if gh_err:
             warnings.append(f"GitHub metadata check skipped: {gh_err}")
         elif repo_data:
@@ -376,9 +420,13 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             elif pkg_name != "template" and is_tmpl:
                 violations.append("GitHub repository should not be a template repository (`is_template = false`)")
 
-            # 7.10 Dependency Graph / Vulnerability Alerts
-            if not vuln_enabled:
-                violations.append("GitHub Dependency Graph / Vulnerability Alerts is disabled (must be enabled)")
+            # 7.10 Dependency Graph (Insights -> Dependency graph)
+            if not dep_graph_enabled:
+                violations.append("GitHub Dependency Graph is disabled (must be enabled under Insights -> Dependency graph)")
+
+            # 7.11 Homepage Sidebar Packages must be disabled
+            if not packages_disabled:
+                violations.append("GitHub repository homepage sidebar 'Packages' is enabled (must be disabled via About settings -> uncheck Packages)")
 
     passed = len(violations) == 0
     return {
