@@ -515,10 +515,12 @@ def main():
     # Determine packages directory
     packages_dir = args.packages_dir
     if packages_dir is None:
-        adjacent_lib = (repo_root.parent / "Lib").resolve()
-        if adjacent_lib.is_dir() and (adjacent_lib / "rand" / "alya.toml").is_file():
-            packages_dir = adjacent_lib
-        else:
+        for candidate in [repo_root.parent / "Lib", repo_root.parent.parent / "Lib"]:
+            candidate_res = candidate.resolve()
+            if candidate_res.is_dir() and (candidate_res / "rand" / "alya.toml").is_file():
+                packages_dir = candidate_res
+                break
+        if packages_dir is None:
             packages_dir = repo_root / "workspace" / "packages"
 
     # Filter target packages
@@ -553,6 +555,8 @@ def main():
                 })
                 has_failures = True
                 continue
+        elif packages_dir == (repo_root / "workspace" / "packages") and (pkg_path / ".git").is_dir():
+            run_cmd(["git", "-C", str(pkg_path), "pull"])
 
         res = check_package_compliance(pkg, pkg_path, check_github=check_github)
         results.append(res)
