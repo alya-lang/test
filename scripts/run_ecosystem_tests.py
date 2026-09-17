@@ -12,6 +12,7 @@ Runs seamlessly both locally and inside GitHub Actions CI.
 import argparse
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -54,6 +55,16 @@ COLOR_RED = "\033[0;31m"
 COLOR_CYAN = "\033[0;36m"
 COLOR_YELLOW = "\033[1;33m"
 COLOR_GRAY = "\033[0;90m"
+
+ANSI_ESCAPE_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def strip_ansi(text: str) -> str:
+    """Strip ANSI escape sequences from text for clean markdown rendering."""
+    if not text:
+        return ""
+    return ANSI_ESCAPE_RE.sub("", text)
+
 
 # Ensure UTF-8 output and line buffering across all consoles
 if hasattr(sys.stdout, "reconfigure"):
@@ -349,7 +360,8 @@ def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp
         status_icon = "✅ Passed" if comp_res["passed"] else "❌ Failed"
         lines.append(f"### 🦀 Compiler Internal Tests (`cargo test`): {status_icon} (`{comp_res['duration']:.1f}s`)")
         if not comp_res["passed"]:
-            lines.append("<details><summary>Compiler Test Failure Log</summary>\n\n```text\n" + comp_res["output"] + "\n```\n</details>\n")
+            clean_comp_output = strip_ansi(comp_res["output"]).strip()
+            lines.append(f"<details><summary>Compiler Test Failure Log</summary>\n\n```text\n{clean_comp_output}\n```\n</details>\n")
 
     lines.append("### 📦 Package Results")
     lines.append("")
@@ -366,7 +378,8 @@ def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp
     if failed_pkgs:
         lines.append("\n### 🚨 Failure Details")
         for fp in failed_pkgs:
-            lines.append(f"<details><summary><b>Failure output for {fp['name']}</b></summary>\n\n```text\n{fp['output'].strip()}\n```\n</details>\n")
+            clean_pkg_output = strip_ansi(fp["output"]).strip()
+            lines.append(f"<details><summary><b>Failure output for {fp['name']}</b></summary>\n\n```text\n{clean_pkg_output}\n```\n</details>\n")
 
     with open(gh_summary, "a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
