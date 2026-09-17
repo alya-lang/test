@@ -105,16 +105,40 @@ COLOR_CYAN = "\033[0;36m"
 COLOR_YELLOW = "\033[1;33m"
 COLOR_GRAY = "\033[0;90m"
 
+ANSI_ESCAPE_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def strip_ansi(text: str) -> str:
+    """Strip ANSI escape sequences from text for clean markdown rendering."""
+    if not text:
+        return ""
+    return ANSI_ESCAPE_RE.sub("", text)
+
+
 # Ensure UTF-8 output and line buffering across all consoles
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
+IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
+
 
 def log(msg, color=""):
     prefix = f"{COLOR_BOLD}{COLOR_CYAN}[template-check]{COLOR_RESET} "
     print(f"{prefix}{color}{msg}{COLOR_RESET}", flush=True)
+
+
+def group_start(title):
+    if IN_CI:
+        print(f"::group::{title}", flush=True)
+    else:
+        log(f"--- {title} ---", COLOR_BOLD)
+
+
+def group_end():
+    if IN_CI:
+        print("::endgroup::", flush=True)
 
 
 def run_cmd(cmd, cwd=None, capture=True, timeout=120):
@@ -479,7 +503,7 @@ def write_github_summary(results: list):
         for fr in failed_results:
             lines.append(f"<details open><summary><b>Package: {fr['name']} ({len(fr['violations'])} violations)</b></summary>\n")
             for v in fr["violations"]:
-                lines.append(f"- ❌ {v}")
+                lines.append(f"- ❌ {strip_ansi(v)}")
             lines.append("\n</details>\n")
 
     with open(gh_summary, "a", encoding="utf-8") as f:
@@ -518,27 +542,29 @@ def main():
     packages_dir = args.packages_dir
     if packages_dir is None:
         for candidate in [repo_root.parent / "Lib", repo_root.parent.parent / "Lib"]:
-            candidate_res = candidate.resolve()
-            if candidate_res.is_dir() and (candidate_res / "rand" / "alya.toml").is_file():
-                packages_dir = candidate_res
+            if candidate.is_dir():
+                packages_dir = candidate.resolve()
                 break
-        if packages_dir is None:
-            packages_dir = repo_root / "workspace" / "packages"
 
-    # Filter target packages
+    if packages_dir is None:
+        packages_dir = repo_root / "workspace" / "packages"
+
+    log(f"Packages Directory: {packages_dir}")
+    log(f"GitHub Verification: {'ENABLED (Checks Repo Description, Tags, Website, Wiki/Projects/Discussions, Dependency Graph)' if check_github else 'DISABLED'}")
+
     if args.packages.strip().upper() == "ALL":
         target_packages = OFFICIAL_PACKAGES
     else:
         target_packages = [p.strip() for p in args.packages.split(",") if p.strip()]
 
-    log(f"Packages Directory: {packages_dir}", COLOR_GRAY)
-    log(f"GitHub Verification: {'ENABLED (Checks Repo Description, Tags, Website, Wiki/Projects/Discussions, Dependency Graph)' if check_github else 'DISABLED (--skip-github)'}", COLOR_GRAY)
-    log(f"Target Packages ({len(target_packages)}): {', '.join(target_packages)}\n")
+    total_pkgs = len(target_packages)
+    log(f"Target Packages ({total_pkgs}): {', '.join(target_packages)}\n")
 
     results = []
     has_failures = False
 
-    for pkg in target_packages:
+    for idx, pkg in enumerate(target_packages, 1):
+        group_start(f"🔍 [{idx}/{total_pkgs}] {pkg}")
         pkg_path = packages_dir / pkg
 
         # If package is not locally available, clone it
@@ -556,6 +582,7 @@ def main():
                     "warnings": [],
                 })
                 has_failures = True
+                group_end()
                 continue
         elif packages_dir == (repo_root / "workspace" / "packages") and (pkg_path / ".git").is_dir():
             run_cmd(["git", "-C", str(pkg_path), "pull"])
@@ -564,15 +591,17 @@ def main():
         results.append(res)
 
         if res["passed"]:
-            print(f"  {COLOR_GREEN}✓{COLOR_RESET} {pkg:<12} {COLOR_GREEN}Compliant{COLOR_RESET}")
+            print(f"  {COLOR_GREEN}✓{COLOR_RESET} {pkg:<12} {COLOR_GREEN}Compliant{COLOR_RESET}", flush=True)
         else:
-            print(f"  {COLOR_RED}✗{COLOR_RESET} {pkg:<12} {COLOR_RED}FAILED ({len(res['violations'])} violations){COLOR_RESET}")
+            print(f"  {COLOR_RED}✗{COLOR_RESET} {pkg:<12} {COLOR_RED}FAILED ({len(res['violations'])} violations){COLOR_RESET}", flush=True)
             for v in res["violations"]:
-                print(f"      {COLOR_RED}• {v}{COLOR_RESET}")
+                print(f"      {COLOR_RED}• {v}{COLOR_RESET}", flush=True)
             has_failures = True
 
         for w in res.get("warnings", []):
-            print(f"      {COLOR_YELLOW}⚠️  {w}{COLOR_RESET}")
+            print(f"      {COLOR_YELLOW}⚠️  {w}{COLOR_RESET}", flush=True)
+
+        group_end()
 
     # Write GitHub Summary
     write_github_summary(results)
@@ -581,7 +610,7 @@ def main():
     passed = sum(1 for r in results if r["passed"])
     failed = total - passed
 
-    print("\n" + "═" * 60)
+    print("\n" + "═" * 60, flush=True)
     if not has_failures:
         log(f"🎉 All {total} package(s) fully comply with template & GitHub repository specifications!", COLOR_BOLD + COLOR_GREEN)
         sys.exit(0)
