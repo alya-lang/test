@@ -105,16 +105,16 @@ COLOR_CYAN = "\033[0;36m"
 COLOR_YELLOW = "\033[1;33m"
 COLOR_GRAY = "\033[0;90m"
 
-# Ensure UTF-8 output across all consoles
+# Ensure UTF-8 output and line buffering across all consoles
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 
 def log(msg, color=""):
     prefix = f"{COLOR_BOLD}{COLOR_CYAN}[template-check]{COLOR_RESET} "
-    print(f"{prefix}{color}{msg}{COLOR_RESET}")
+    print(f"{prefix}{color}{msg}{COLOR_RESET}", flush=True)
 
 
 def run_cmd(cmd, cwd=None, capture=True, timeout=120):

@@ -15,6 +15,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -54,23 +55,100 @@ COLOR_CYAN = "\033[0;36m"
 COLOR_YELLOW = "\033[1;33m"
 COLOR_GRAY = "\033[0;90m"
 
-# Ensure UTF-8 output across all consoles
+# Ensure UTF-8 output and line buffering across all consoles
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+
+IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
 
 
 def log(msg, color=""):
     prefix = f"{COLOR_BOLD}{COLOR_CYAN}[alya-test]{COLOR_RESET} "
-    print(f"{prefix}{color}{msg}{COLOR_RESET}")
+    print(f"{prefix}{color}{msg}{COLOR_RESET}", flush=True)
 
 
-def run_cmd(cmd, cwd=None, env=None, check=False, capture=False, timeout=None):
-    """Run a command with proper error logging, optional output capture, and timeout."""
+def group_start(title):
+    if IN_CI:
+        print(f"::group::{title}", flush=True)
+    else:
+        log(f"--- {title} ---", COLOR_BOLD)
+
+
+def group_end():
+    if IN_CI:
+        print("::endgroup::", flush=True)
+
+
+def run_cmd(cmd, cwd=None, env=None, check=False, capture=False, stream=False, timeout=None):
+    """Run a command with proper error logging, optional streaming or capture, and timeout."""
     exec_env = os.environ.copy()
     if env:
         exec_env.update(env)
+
+    if stream:
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                cwd=cwd,
+                env=exec_env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+        except Exception as e:
+            cmd_str = " ".join(str(c) for c in cmd)
+            log(f"Failed to execute command '{cmd_str}': {e}", COLOR_RED)
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=-1,
+                stdout=str(e),
+                stderr="",
+            )
+
+        output_lines = []
+
+        def reader():
+            try:
+                for line in iter(proc.stdout.readline, ""):
+                    output_lines.append(line)
+                    print(line, end="", flush=True)
+            finally:
+                proc.stdout.close()
+
+        t = threading.Thread(target=reader, daemon=True)
+        t.start()
+
+        try:
+            returncode = proc.wait(timeout=timeout)
+            t.join(timeout=5)
+            full_output = "".join(output_lines)
+            res = subprocess.CompletedProcess(
+                args=cmd,
+                returncode=returncode,
+                stdout=full_output,
+                stderr="",
+            )
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            t.join(timeout=2)
+            cmd_str = " ".join(str(c) for c in cmd)
+            log(f"Command timed out after {timeout}s: {cmd_str}", COLOR_RED)
+            full_output = "".join(output_lines) + f"\n[ERROR] Command timed out after {timeout} seconds.\n"
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=-1,
+                stdout=full_output,
+                stderr="",
+            )
+
+        if check and res.returncode != 0:
+            raise subprocess.CalledProcessError(res.returncode, cmd)
+        return res
 
     try:
         if capture:
@@ -123,12 +201,14 @@ def clone_with_retry(cmd, cwd=None, retries=3, delay=2):
 
 def build_compiler(compiler_dir, profile="quick"):
     """Builds the Alya compiler using cargo and returns path to alyac binary."""
+    group_start("🔨 Building Alya Compiler")
     log(f"Building Alya compiler in {compiler_dir} (profile: {profile})...", COLOR_CYAN)
     
     cargo_cmd = ["cargo", "build", f"--profile={profile}"]
-    res = run_cmd(cargo_cmd, cwd=compiler_dir)
+    res = run_cmd(cargo_cmd, cwd=compiler_dir, stream=True)
     if res.returncode != 0:
         log("Cargo build failed!", COLOR_RED)
+        group_end()
         sys.exit(1)
 
     # Locate binary
@@ -142,6 +222,7 @@ def build_compiler(compiler_dir, profile="quick"):
 
     if not bin_path.is_file():
         log(f"Compiler executable not found at: {bin_path}", COLOR_RED)
+        group_end()
         sys.exit(1)
 
     log(f"Compiler ready: {bin_path}", COLOR_GREEN)
@@ -169,14 +250,16 @@ def build_compiler(compiler_dir, profile="quick"):
     if tc_res.returncode == 0:
         log(f"Active Toolchain:\n{tc_res.stdout.strip()}", COLOR_GRAY)
 
+    group_end()
     return bin_path, version_str
 
 
 def run_compiler_tests(compiler_dir):
     """Runs compiler test suite with cargo test."""
+    group_start("🦀 Compiler Internal Tests (cargo test)")
     log("Running compiler test suite (cargo test)...", COLOR_CYAN)
     start = time.time()
-    res = run_cmd(["cargo", "test"], cwd=compiler_dir, capture=True)
+    res = run_cmd(["cargo", "test"], cwd=compiler_dir, stream=True)
     duration = time.time() - start
     passed = (res.returncode == 0)
     
@@ -184,14 +267,13 @@ def run_compiler_tests(compiler_dir):
         log(f"Compiler tests passed ({duration:.1f}s)", COLOR_GREEN)
     else:
         log(f"Compiler tests FAILED ({duration:.1f}s)", COLOR_RED)
-        print(res.stdout)
-        print(res.stderr)
+    group_end()
         
     return {
         "name": "alya (cargo test)",
         "passed": passed,
         "duration": duration,
-        "output": res.stdout + "\n" + res.stderr,
+        "output": res.stdout,
     }
 
 
@@ -202,9 +284,12 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
     
     # 1. Format check (timeout 60s)
     fmt_res = run_cmd(["alyac", "fmt", ".", "--check"], cwd=pkg_dir, capture=True, timeout=60)
+    if fmt_res.returncode != 0:
+        log(f"  Notice: 'alyac fmt' detected formatting differences", COLOR_YELLOW)
     
     # 2. Dependency install if needed (timeout 120s)
     if (pkg_dir / "alya.lock").is_file() or (pkg_dir / "alya.toml").is_file():
+        log(f"  Checking dependencies ('alyac install')...", COLOR_GRAY)
         install_res = run_cmd(["alyac", "install"], cwd=pkg_dir, capture=True, timeout=120)
         if install_res.returncode != 0:
             log(f"  Notice: 'alyac install' returned code {install_res.returncode}", COLOR_YELLOW)
@@ -216,7 +301,8 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
     elif jobs:
         test_cmd.extend(["-j", str(jobs)])
 
-    test_res = run_cmd(test_cmd, cwd=pkg_dir, capture=True, timeout=timeout)
+    log(f"  Running: {' '.join(test_cmd)}", COLOR_GRAY)
+    test_res = run_cmd(test_cmd, cwd=pkg_dir, stream=True, timeout=timeout)
     duration = time.time() - start
     passed = (test_res.returncode == 0)
 
@@ -224,17 +310,13 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
         log(f"  ✓ {pkg_name} passed ({duration:.2f}s)", COLOR_GREEN)
     else:
         log(f"  ✗ {pkg_name} FAILED ({duration:.2f}s)", COLOR_RED)
-        if test_res.stdout:
-            print(test_res.stdout.strip())
-        if test_res.stderr:
-            print(test_res.stderr.strip())
 
     return {
         "name": pkg_name,
         "passed": passed,
         "duration": duration,
         "fmt_ok": (fmt_res.returncode == 0),
-        "output": test_res.stdout + "\n" + test_res.stderr,
+        "output": test_res.stdout,
     }
 
 
@@ -392,12 +474,15 @@ def main():
     else:
         target_pkgs = [p.strip() for p in args.packages.split(",") if p.strip()]
 
-    log(f"Target packages to test ({len(target_pkgs)}): {', '.join(target_pkgs)}", COLOR_CYAN)
+    total_pkgs = len(target_pkgs)
+    log(f"Target packages to test ({total_pkgs}): {', '.join(target_pkgs)}", COLOR_CYAN)
 
     pkg_results = []
     packages_base = args.packages_dir
 
-    for pkg_name in target_pkgs:
+    for idx, pkg_name in enumerate(target_pkgs, 1):
+        group_start(f"📦 [{idx}/{total_pkgs}] Lib/{pkg_name}")
+        log(f"[{idx}/{total_pkgs}] Preparing Package: Lib/{pkg_name}...", COLOR_BOLD)
         pkg_dir = None
         if packages_base and (packages_base / pkg_name).is_dir():
             pkg_dir = packages_base / pkg_name
@@ -405,16 +490,20 @@ def main():
             pkg_dir = workspace / "packages" / pkg_name
             if not pkg_dir.is_dir():
                 pkg_repo = f"https://github.com/alya-lang/{pkg_name}.git"
-                clone_with_retry([
+                log(f"  Cloning {pkg_name} from {pkg_repo} (branch: main)...", COLOR_GRAY)
+                clone_success = clone_with_retry([
                     "git", "clone",
                     "--depth", "1",
                     "--branch", "main",
                     pkg_repo,
                     str(pkg_dir),
                 ])
+                if not clone_success:
+                    log(f"  Failed to clone {pkg_name}!", COLOR_RED)
 
         if not pkg_dir.is_dir():
             log(f"Warning: Package directory {pkg_dir} could not be resolved. Skipping.", COLOR_YELLOW)
+            group_end()
             continue
 
         res = test_package(
@@ -425,35 +514,36 @@ def main():
             timeout=args.timeout,
         )
         pkg_results.append(res)
+        group_end()
 
     # 5. Print Terminal Summary Table
     suite_duration = time.time() - suite_start
-    print("\n" + "=" * 60)
-    print(f"{COLOR_BOLD}                 ECOSYSTEM TEST SUMMARY{COLOR_RESET}")
-    print("=" * 60)
-    print(f"  Platform:         {os_name} ({arch_name})")
-    print(f"  Compiler Version: {compiler_version}")
-    print(f"  Compiler Branch:  {args.compiler_branch}")
-    print(f"  Total Duration:   {suite_duration:.1f}s")
-    print("-" * 60)
+    print("\n" + "=" * 60, flush=True)
+    print(f"{COLOR_BOLD}                 ECOSYSTEM TEST SUMMARY{COLOR_RESET}", flush=True)
+    print("=" * 60, flush=True)
+    print(f"  Platform:         {os_name} ({arch_name})", flush=True)
+    print(f"  Compiler Version: {compiler_version}", flush=True)
+    print(f"  Compiler Branch:  {args.compiler_branch}", flush=True)
+    print(f"  Total Duration:   {suite_duration:.1f}s", flush=True)
+    print("-" * 60, flush=True)
 
     if comp_res:
         comp_status = f"{COLOR_GREEN}PASSED{COLOR_RESET}" if comp_res["passed"] else f"{COLOR_RED}FAILED{COLOR_RESET}"
-        print(f"  Compiler Test:    {comp_status} ({comp_res['duration']:.1f}s)")
+        print(f"  Compiler Test:    {comp_status} ({comp_res['duration']:.1f}s)", flush=True)
 
     passed_pkgs = [r for r in pkg_results if r["passed"]]
     failed_pkgs = [r for r in pkg_results if not r["passed"]]
 
-    print(f"\n  Passed Packages ({len(passed_pkgs)}/{len(pkg_results)}):")
+    print(f"\n  Passed Packages ({len(passed_pkgs)}/{len(pkg_results)}):", flush=True)
     for r in passed_pkgs:
-        print(f"    {COLOR_GREEN}✓{COLOR_RESET} {r['name']:<15} ({r['duration']:.2f}s)")
+        print(f"    {COLOR_GREEN}✓{COLOR_RESET} {r['name']:<15} ({r['duration']:.2f}s)", flush=True)
 
     if failed_pkgs:
-        print(f"\n  {COLOR_RED}Failed Packages ({len(failed_pkgs)}/{len(pkg_results)}):{COLOR_RESET}")
+        print(f"\n  {COLOR_RED}Failed Packages ({len(failed_pkgs)}/{len(pkg_results)}):{COLOR_RESET}", flush=True)
         for r in failed_pkgs:
-            print(f"    {COLOR_RED}✗{COLOR_RESET} {r['name']:<15} ({r['duration']:.2f}s)")
+            print(f"    {COLOR_RED}✗{COLOR_RESET} {r['name']:<15} ({r['duration']:.2f}s)", flush=True)
 
-    print("=" * 60 + "\n")
+    print("=" * 60 + "\n", flush=True)
 
     # 6. Output to GitHub Summary
     write_github_summary(

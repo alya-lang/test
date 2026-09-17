@@ -53,8 +53,9 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONUNBUFFERED: '1'
         run: |
-          python3 scripts/check_template_compliance.py --packages "${{ inputs.packages || 'ALL' }}"
+          python3 -u scripts/check_template_compliance.py --packages "${{ inputs.packages || 'ALL' }}"
 
   ecosystem-test:
     name: Ecosystem (${{ matrix.os }})
@@ -80,6 +81,7 @@ jobs:
         shell: bash
         env:
           ALYA_TOOLCHAIN_AUTO_INSTALL: '1'
+          PYTHONUNBUFFERED: '1'
         run: |
           COMPILER_BRANCH="${{ inputs.compiler_branch || 'develop' }}"
           PACKAGES="${{ inputs.packages || 'ALL' }}"
@@ -94,7 +96,7 @@ jobs:
             EXTRA_FLAGS="$EXTRA_FLAGS --jobs ${{ inputs.jobs }}"
           fi
 
-          python3 scripts/run_ecosystem_tests.py \
+          python3 -u scripts/run_ecosystem_tests.py \
             --compiler-branch "$COMPILER_BRANCH" \
             --packages "$PACKAGES" \
             $EXTRA_FLAGS
