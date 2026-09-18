@@ -232,6 +232,10 @@ def build_compiler(compiler_dir, profile="quick"):
         bin_path = compiler_dir / "target" / "release" / bin_name
 
     if not bin_path.is_file():
+        # Try debug directory fallback
+        bin_path = compiler_dir / "target" / "debug" / bin_name
+
+    if not bin_path.is_file():
         log(f"Compiler executable not found at: {bin_path}", COLOR_RED)
         group_end()
         sys.exit(1)
@@ -305,7 +309,15 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
         if install_res.returncode != 0:
             log(f"  Notice: 'alya install' returned code {install_res.returncode}", COLOR_YELLOW)
 
-    # 3. Run test suite
+    # 3. Documentation generation check (timeout 60s)
+    doc_check_dir = pkg_dir / ".doc_check"
+    doc_res = run_cmd(["alya", "doc", ".", "-o", ".doc_check", "--markdown"], cwd=pkg_dir, capture=True, timeout=60)
+    if doc_check_dir.is_dir():
+        shutil.rmtree(doc_check_dir, ignore_errors=True)
+    if doc_res.returncode != 0:
+        log(f"  Notice: 'alya doc' returned code {doc_res.returncode}", COLOR_YELLOW)
+
+    # 4. Run test suite
     test_cmd = ["alya", "test"]
     if sequential:
         test_cmd.append("--sequential")
@@ -327,6 +339,7 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
         "passed": passed,
         "duration": duration,
         "fmt_ok": (fmt_res.returncode == 0),
+        "doc_ok": (doc_res.returncode == 0),
         "output": test_res.stdout,
     }
 
@@ -365,13 +378,14 @@ def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp
 
     lines.append("### 📦 Package Results")
     lines.append("")
-    lines.append("| Package | Status | Duration | Format Check |")
-    lines.append("|:---|:---:|:---:|:---:|")
+    lines.append("| Package | Status | Duration | Format Check | Doc Check |")
+    lines.append("|:---|:---:|:---:|:---:|:---:|")
 
     for r in pkg_results:
         icon = "✅ Passed" if r["passed"] else "❌ **FAILED**"
         fmt_icon = "✓" if r.get("fmt_ok", True) else "⚠️"
-        lines.append(f"| [`{r['name']}`](https://github.com/alya-lang/{r['name']}) | {icon} | `{r['duration']:.2f}s` | {fmt_icon} |")
+        doc_icon = "✓" if r.get("doc_ok", True) else "⚠️"
+        lines.append(f"| [`{r['name']}`](https://github.com/alya-lang/{r['name']}) | {icon} | `{r['duration']:.2f}s` | {fmt_icon} | {doc_icon} |")
 
     # Add failure logs if any
     failed_pkgs = [r for r in pkg_results if not r["passed"]]

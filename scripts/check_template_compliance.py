@@ -311,6 +311,15 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             if repo_expected not in content:
                 violations.append(f"`alya.toml` repository should point to `{repo_expected}`")
 
+        # Native C-FFI safety constraint check
+        c_dir = pkg_dir / "c"
+        ffi_file = pkg_dir / "src" / "ffi.alya"
+        if c_dir.is_dir() or ffi_file.is_file():
+            if "[build]" not in content:
+                violations.append("Package bundles native C/FFI code, but `alya.toml` is missing `[build]` table")
+            elif "links =" not in content and "links=" not in content:
+                violations.append("`alya.toml` `[build]` table is missing required C-FFI safety constraint `links = \"<name>\"`")
+
     # --- Rule 3: README.md Structure & Headings ---
     readme_path = pkg_dir / "README.md"
     if readme_path.is_file():
@@ -335,20 +344,49 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
 
         # 3.3 Required Headings in Exact Order
         found_headings = [l.strip() for l in lines if l.startswith("## ")]
-        
+
+        def find_matching_heading(req: str, found_list: list) -> str | None:
+            if req == "## 🧪 Running Tests & Benchmarks":
+                for h in found_list:
+                    if h in ("## 🧪 Running Tests & Benchmarks", "## 🧪 Running Tests, Benchmarks & Documentation"):
+                        return h
+            elif req in found_list:
+                return req
+            return None
+
+        matched_headings = []
         for req in REQUIRED_HEADINGS:
-            if req not in found_headings:
-                close = [h for h in found_headings if req.split()[-1] in h]
+            matched = find_matching_heading(req, found_headings)
+            if not matched:
+                close = [h for h in found_headings if any(part in h for part in req.split() if len(part) > 4)]
                 if close:
                     violations.append(f"README heading mismatch: found `{close[0]}`, expected `{req}`")
                 else:
                     violations.append(f"README is missing required section: `{req}`")
+            else:
+                matched_headings.append(matched)
 
-        indices = [found_headings.index(req) for req in REQUIRED_HEADINGS if req in found_headings]
+        indices = [found_headings.index(h) for h in matched_headings]
         if indices != sorted(indices):
             violations.append("README standard sections are not in canonical order")
 
-    # --- Rule 4: Zero Hardcoded Package Versions in Code ---
+    # --- Rule 4: GitHub Actions CI Workflow Standards ---
+    ci_path = pkg_dir / ".github" / "workflows" / "ci.yml"
+    if ci_path.is_file():
+        ci_text = ci_path.read_text(encoding="utf-8", errors="replace")
+        if "alya test" not in ci_text:
+            violations.append("`.github/workflows/ci.yml` must include a test step running `alya test`")
+        if "alya fmt" not in ci_text:
+            violations.append("`.github/workflows/ci.yml` must include a formatting check running `alya fmt . --check`")
+        if "alya doc" not in ci_text:
+            if pkg_name == "template":
+                violations.append("Template repository `.github/workflows/ci.yml` must include an `alya doc` step")
+            else:
+                warnings.append("`.github/workflows/ci.yml` does not contain an `alya doc` step; automated documentation generation is recommended")
+        if pkg_name == "template" and "GITHUB_STEP_SUMMARY" not in ci_text:
+            violations.append("Template repository `.github/workflows/ci.yml` must write docs summary to `$GITHUB_STEP_SUMMARY`")
+
+    # --- Rule 5: Zero Hardcoded Package Versions in Code ---
     src_dir = pkg_dir / "src"
     if src_dir.is_dir():
         for alya_file in src_dir.glob("**/*.alya"):
@@ -356,7 +394,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             if re.search(r"function\s+\w+_version\s*\(\s*\)", code):
                 violations.append(f"Hardcoded version function found in `{alya_file.relative_to(pkg_dir)}`")
 
-    # --- Rule 5: Zero Legacy Backward-Compatibility / Fallback Aliases ---
+    # --- Rule 6: Zero Legacy Backward-Compatibility / Fallback Aliases ---
     if src_dir.is_dir():
         for alya_file in src_dir.glob("**/*.alya"):
             code = alya_file.read_text(encoding="utf-8", errors="replace")
@@ -367,7 +405,18 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             if re.search(r"function\s+(new_rng|rand_rng_float|uniform_int)\s*\(", code):
                 violations.append(f"Deprecated RNG alias function found in `{alya_file.relative_to(pkg_dir)}`")
 
-    # --- Rule 6: Strict English Language Compliance ---
+    # --- Rule 7: Source Code Documentation Standards ---
+    if src_dir.is_dir():
+        alya_src_files = list(src_dir.glob("**/*.alya"))
+        if alya_src_files:
+            has_doc_comments = any("##" in f.read_text(encoding="utf-8", errors="replace") for f in alya_src_files)
+            if not has_doc_comments:
+                if pkg_name == "template":
+                    violations.append("Template repository `src/` must contain `##` doc comments for modules and public APIs")
+                else:
+                    warnings.append("No `##` doc comments found in `src/`; API documentation comments are recommended")
+
+    # --- Rule 8: Strict English Language Compliance ---
     for f in pkg_dir.glob("**/*"):
         if (
             f.is_file()
@@ -391,7 +440,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
                     f"Turkish phrase 'Geriye Dönük' found in `{f.relative_to(pkg_dir)}`"
                 )
 
-    # --- Rule 7: GitHub Repository Settings & Metadata ---
+    # --- Rule 9: GitHub Repository Settings & Metadata ---
     if check_github:
         repo_data, dep_graph_enabled, packages_disabled, gh_err = fetch_github_metadata(pkg_name)
         if gh_err:
