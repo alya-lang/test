@@ -370,6 +370,17 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         if indices != sorted(indices):
             violations.append("README standard sections are not in canonical order")
 
+        # 3.4 Strict Heading Scope: No unauthorized H2 headings allowed
+        unauthorized = [h for h in found_headings if h not in matched_headings]
+        if unauthorized:
+            for uh in unauthorized:
+                violations.append(f"README contains non-standard section `{uh}`. README must strictly adhere to standard template sections.")
+
+        # 3.5 No Hardcoded Benchmark/Performance Result Tables
+        # Benchmarks should be executed via `alya run benches/bench_basic.alya`, not embedded as static hardware-specific tables.
+        if "Mean (ns/op)" in readme_text or "Benchmark Suite:" in readme_text:
+            violations.append("README contains static benchmark/performance table. Per standard template, benchmarks must only be executed via `alya run benches/...` without embedding static hardware-specific tables.")
+
     # --- Rule 4: GitHub Actions CI Workflow Standards ---
     ci_path = pkg_dir / ".github" / "workflows" / "ci.yml"
     if ci_path.is_file():
