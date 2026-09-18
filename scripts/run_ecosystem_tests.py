@@ -211,7 +211,7 @@ def clone_with_retry(cmd, cwd=None, retries=3, delay=2):
 
 
 def build_compiler(compiler_dir, profile="quick"):
-    """Builds the Alya compiler using cargo and returns path to alyac binary."""
+    """Builds the Alya compiler using cargo and returns path to alya binary."""
     group_start("🔨 Building Alya Compiler")
     log(f"Building Alya compiler in {compiler_dir} (profile: {profile})...", COLOR_CYAN)
     
@@ -224,7 +224,7 @@ def build_compiler(compiler_dir, profile="quick"):
 
     # Locate binary
     ext = ".exe" if sys.platform == "win32" else ""
-    bin_name = f"alyac{ext}"
+    bin_name = f"alya{ext}"
     bin_path = compiler_dir / "target" / profile / bin_name
     
     if not bin_path.is_file():
@@ -249,15 +249,15 @@ def build_compiler(compiler_dir, profile="quick"):
             f.write(f"{bin_dir}\n")
 
     # Verify version
-    ver_res = run_cmd(["alyac", "--version"], capture=True)
+    ver_res = run_cmd(["alya", "--version"], capture=True)
     version_str = ver_res.stdout.strip() if ver_res.returncode == 0 else "unknown"
-    log(f"Installed alyac version: {version_str}", COLOR_GREEN)
+    log(f"Installed alya version: {version_str}", COLOR_GREEN)
     
     # Ensure toolchain auto-installation is enabled for headless/CI test environments
     os.environ["ALYA_TOOLCHAIN_AUTO_INSTALL"] = "1"
 
     # Log active toolchain status
-    tc_res = run_cmd(["alyac", "toolchain", "status"], capture=True)
+    tc_res = run_cmd(["alya", "toolchain", "status"], capture=True)
     if tc_res.returncode == 0:
         log(f"Active Toolchain:\n{tc_res.stdout.strip()}", COLOR_GRAY)
 
@@ -294,19 +294,19 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
     start = time.time()
     
     # 1. Format check (timeout 60s)
-    fmt_res = run_cmd(["alyac", "fmt", ".", "--check"], cwd=pkg_dir, capture=True, timeout=60)
+    fmt_res = run_cmd(["alya", "fmt", ".", "--check"], cwd=pkg_dir, capture=True, timeout=60)
     if fmt_res.returncode != 0:
-        log(f"  Notice: 'alyac fmt' detected formatting differences", COLOR_YELLOW)
+        log(f"  Notice: 'alya fmt' detected formatting differences", COLOR_YELLOW)
     
     # 2. Dependency install if needed (timeout 120s)
     if (pkg_dir / "alya.lock").is_file() or (pkg_dir / "alya.toml").is_file():
-        log(f"  Checking dependencies ('alyac install')...", COLOR_GRAY)
-        install_res = run_cmd(["alyac", "install"], cwd=pkg_dir, capture=True, timeout=120)
+        log(f"  Checking dependencies ('alya install')...", COLOR_GRAY)
+        install_res = run_cmd(["alya", "install"], cwd=pkg_dir, capture=True, timeout=120)
         if install_res.returncode != 0:
-            log(f"  Notice: 'alyac install' returned code {install_res.returncode}", COLOR_YELLOW)
+            log(f"  Notice: 'alya install' returned code {install_res.returncode}", COLOR_YELLOW)
 
     # 3. Run test suite
-    test_cmd = ["alyac", "test"]
+    test_cmd = ["alya", "test"]
     if sequential:
         test_cmd.append("--sequential")
     elif jobs:
@@ -425,7 +425,7 @@ def main():
     parser.add_argument(
         "--sequential",
         action="store_true",
-        help="Run package test suites sequentially (alyac test --sequential).",
+        help="Run package test suites sequentially (alya test --sequential).",
     )
     parser.add_argument(
         "--jobs",

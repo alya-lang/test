@@ -82,10 +82,10 @@ python scripts/run_ecosystem_tests.py --compiler-branch my-feature-branch
 # 4. Skip compiler unit tests and test packages directly:
 python scripts/run_ecosystem_tests.py --skip-compiler-tests
 
-# 5. Run tests sequentially (alyac test --sequential):
+# 5. Run tests sequentially (alya test --sequential):
 python scripts/run_ecosystem_tests.py --sequential
 
-# 6. Specify worker thread count (alyac test -j 4):
+# 6. Specify worker thread count (alya test -j 4):
 python scripts/run_ecosystem_tests.py --jobs 4
 
 # 7. Custom per-package timeout (default: 300s):
