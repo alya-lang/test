@@ -5,7 +5,7 @@
 
 Official multi-platform integration testing and ecosystem CI for the [Alya](https://github.com/alya-lang/alya) programming language.
 
-This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 23 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
+This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 24 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
 
 ---
 
@@ -13,7 +13,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 - **Multi-OS Matrix:** Verifies the full ecosystem on Linux, Windows, and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
-- **Selective Package Testing:** Run tests for all 23 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
+- **Selective Package Testing:** Run tests for all 24 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
 - **Standalone & Cross-Platform:** Single universal runner (`scripts/run_ecosystem_tests.py`) working seamlessly across Windows, Linux, and macOS without requiring a monorepo setup.
 
@@ -40,6 +40,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser, comparator, bumper, and range checker |
 | [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | Fast and lightweight SQLite3 bindings with bundled C engine (zero external dependencies) |
 | [`template`](https://github.com/alya-lang/template) | `alya-lang/template` | Official template repository for all future Alya packages (GitHub Template enabled) |
+| [`tensor`](https://github.com/alya-lang/tensor) | `alya-lang/tensor` | Multi-dimensional tensor engine with SIMD vector acceleration |
 | [`term`](https://github.com/alya-lang/term) | `alya-lang/term` | Modern terminal UI toolkit: ANSI styling, tables, callouts, trees, progress bars, charts, prompts, cursor controls |
 | [`toml`](https://github.com/alya-lang/toml) | `alya-lang/toml` | TOML v1.0.0 parser, serializer, and TomlBuilder API |
 | [`url`](https://github.com/alya-lang/url) | `alya-lang/url` | WHATWG and RFC 3986 compliant URL parser, serializer, normalizer, and query string library |
@@ -70,7 +71,7 @@ The test suite runs automatically every night at **02:00 UTC** against the lates
 The ecosystem test suite is fully standalone and runs seamlessly across Windows, macOS, and Linux using a single cross-platform Python runner:
 
 ```bash
-# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 23 packages in parallel):
+# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 24 packages in parallel):
 python scripts/run_ecosystem_tests.py
 
 # 2. Test specific packages only:

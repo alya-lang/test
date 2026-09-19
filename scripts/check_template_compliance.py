@@ -77,6 +77,7 @@ OFFICIAL_PACKAGES = [
     "semver",
     "sqlite",
     "template",
+    "tensor",
     "term",
     "toml",
     "url",
