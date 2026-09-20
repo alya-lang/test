@@ -281,7 +281,12 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         "README.md",
         "LICENSE",
         ".gitignore",
+        ".editorconfig",
         ".github/workflows/ci.yml",
+        ".vscode/settings.json",
+        ".vscode/launch.json",
+        ".vscode/tasks.json",
+        ".vscode/extensions.json",
     ]
     for rf in required_files:
         p = pkg_dir / rf
@@ -303,6 +308,8 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             violations.append("`alya.toml` is missing `version` declaration")
         if "alya-version =" not in content:
             violations.append("`alya.toml` is missing `alya-version` requirement")
+        elif 'alya-version = "0.0.19"' not in content and "alya-version = '0.0.19'" not in content:
+            violations.append("`alya.toml` `alya-version` should be set to `0.0.19`")
         if "entry =" not in content:
             violations.append("`alya.toml` is missing `entry` path")
         if "license = \"MIT\"" not in content and "license = 'MIT'" not in content:
@@ -390,6 +397,8 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             violations.append("`.github/workflows/ci.yml` must include a test step running `alya test`")
         if "alya fmt" not in ci_text:
             violations.append("`.github/workflows/ci.yml` must include a formatting check running `alya fmt . --check`")
+        if "alya lint" not in ci_text:
+            violations.append("`.github/workflows/ci.yml` must include a static analysis check running `alya lint . --check`")
         if "alya doc" not in ci_text:
             if pkg_name == "template":
                 violations.append("Template repository `.github/workflows/ci.yml` must include an `alya doc` step")

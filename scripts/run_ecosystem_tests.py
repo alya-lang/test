@@ -302,6 +302,11 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
     fmt_res = run_cmd(["alya", "fmt", ".", "--check"], cwd=pkg_dir, capture=True, timeout=60)
     if fmt_res.returncode != 0:
         log(f"  Notice: 'alya fmt' detected formatting differences", COLOR_YELLOW)
+
+    # 2. Lint check (timeout 60s)
+    lint_res = run_cmd(["alya", "lint", ".", "--check"], cwd=pkg_dir, capture=True, timeout=60)
+    if lint_res.returncode != 0:
+        log(f"  Notice: 'alya lint' detected issues", COLOR_YELLOW)
     
     # 2. Dependency install if needed (timeout 120s)
     if (pkg_dir / "alya.lock").is_file() or (pkg_dir / "alya.toml").is_file():
@@ -340,6 +345,7 @@ def test_package(pkg_name, pkg_dir, sequential=False, jobs=None, timeout=300):
         "passed": passed,
         "duration": duration,
         "fmt_ok": (fmt_res.returncode == 0),
+        "lint_ok": (lint_res.returncode == 0),
         "doc_ok": (doc_res.returncode == 0),
         "output": test_res.stdout,
     }
@@ -379,14 +385,15 @@ def write_github_summary(os_name, arch_name, compiler_ver, compiler_branch, comp
 
     lines.append("### 📦 Package Results")
     lines.append("")
-    lines.append("| Package | Status | Duration | Format Check | Doc Check |")
-    lines.append("|:---|:---:|:---:|:---:|:---:|")
+    lines.append("| Package | Status | Duration | Format Check | Lint Check | Doc Check |")
+    lines.append("|:---|:---:|:---:|:---:|:---:|:---:|")
 
     for r in pkg_results:
         icon = "✅ Passed" if r["passed"] else "❌ **FAILED**"
         fmt_icon = "✓" if r.get("fmt_ok", True) else "⚠️"
+        lint_icon = "✓" if r.get("lint_ok", True) else "⚠️"
         doc_icon = "✓" if r.get("doc_ok", True) else "⚠️"
-        lines.append(f"| [`{r['name']}`](https://github.com/alya-lang/{r['name']}) | {icon} | `{r['duration']:.2f}s` | {fmt_icon} | {doc_icon} |")
+        lines.append(f"| [`{r['name']}`](https://github.com/alya-lang/{r['name']}) | {icon} | `{r['duration']:.2f}s` | {fmt_icon} | {lint_icon} | {doc_icon} |")
 
     # Add failure logs if any
     failed_pkgs = [r for r in pkg_results if not r["passed"]]
