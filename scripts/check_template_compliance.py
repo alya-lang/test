@@ -308,8 +308,23 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             violations.append("`alya.toml` is missing `version` declaration")
         if "alya-version =" not in content:
             violations.append("`alya.toml` is missing `alya-version` requirement")
-        elif 'alya-version = "0.0.19"' not in content and "alya-version = '0.0.19'" not in content:
-            violations.append("`alya.toml` `alya-version` should be set to `0.0.19`")
+        else:
+            _av_match = re.search(r'alya-version\s*=\s*["\']([^"\']+)["\']', content)
+            if not _av_match:
+                violations.append("`alya.toml` `alya-version` value could not be parsed")
+            else:
+                _av_parts = _av_match.group(1).split(".")
+                try:
+                    _av_tuple = tuple(int(x) for x in _av_parts)
+                    if _av_tuple < (0, 0, 19):
+                        violations.append(
+                            f"`alya.toml` `alya-version` is `{_av_match.group(1)}`, "
+                            f"minimum required is `0.0.19`"
+                        )
+                except ValueError:
+                    violations.append(
+                        f"`alya.toml` `alya-version` `{_av_match.group(1)}` is not a valid semver string"
+                    )
         if "entry =" not in content:
             violations.append("`alya.toml` is missing `entry` path")
         if "license = \"MIT\"" not in content and "license = 'MIT'" not in content:
@@ -350,31 +365,21 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         if "package.version" not in readme_text:
             violations.append("README is missing package version badge")
 
-        # 3.3 Required Headings in Exact Order
+        # 3.3 Required Headings in Exact Order (strict — no variant aliases allowed)
         found_headings = [l.strip() for l in lines if l.startswith("## ")]
-
-        def find_matching_heading(req: str, found_list: list) -> str | None:
-            if req == "## 🧪 Running Tests & Benchmarks":
-                for h in found_list:
-                    if h in ("## 🧪 Running Tests & Benchmarks", "## 🧪 Running Tests, Benchmarks & Documentation"):
-                        return h
-            elif req in found_list:
-                return req
-            return None
 
         matched_headings = []
         for req in REQUIRED_HEADINGS:
-            matched = find_matching_heading(req, found_headings)
-            if not matched:
+            if req in found_headings:
+                matched_headings.append(req)
+            else:
                 close = [h for h in found_headings if any(part in h for part in req.split() if len(part) > 4)]
                 if close:
-                    violations.append(f"README heading mismatch: found `{close[0]}`, expected `{req}`")
+                    violations.append(f"README heading mismatch: found `{close[0]}`, expected exactly `{req}`")
                 else:
                     violations.append(f"README is missing required section: `{req}`")
-            else:
-                matched_headings.append(matched)
 
-        indices = [found_headings.index(h) for h in matched_headings]
+        indices = [found_headings.index(h) for h in matched_headings if h in found_headings]
         if indices != sorted(indices):
             violations.append("README standard sections are not in canonical order")
 
@@ -388,6 +393,57 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         # Benchmarks should be executed via `alya run benches/bench_basic.alya`, not embedded as static hardware-specific tables.
         if "Mean (ns/op)" in readme_text or "Benchmark Suite:" in readme_text:
             violations.append("README contains static benchmark/performance table. Per standard template, benchmarks must only be executed via `alya run benches/...` without embedding static hardware-specific tables.")
+
+        # 3.6 Quick Start must contain a function main() alya code block
+        _qs_start = readme_text.find("## 🚀 Quick Start")
+        _qs_end = readme_text.find("\n## ", _qs_start + 1) if _qs_start != -1 else -1
+        _qs_section = readme_text[_qs_start:_qs_end] if _qs_start != -1 and _qs_end != -1 else readme_text[_qs_start:] if _qs_start != -1 else ""
+        if _qs_section:
+            if "```alya" not in _qs_section:
+                violations.append("README `## 🚀 Quick Start` section must contain at least one ` ```alya ` code block")
+            elif "function main()" not in _qs_section:
+                violations.append("README `## 🚀 Quick Start` ` ```alya ` code block must contain a `function main()` entry point")
+
+        # 3.7 Installation section must use alya add + alya install
+        _inst_start = readme_text.find("## 📦 Installation")
+        _inst_end = readme_text.find("\n## ", _inst_start + 1) if _inst_start != -1 else -1
+        _inst_section = readme_text[_inst_start:_inst_end] if _inst_start != -1 and _inst_end != -1 else readme_text[_inst_start:] if _inst_start != -1 else ""
+        if _inst_section:
+            if "alya add" not in _inst_section:
+                violations.append("README `## 📦 Installation` section must include `alya add` command")
+            if "alya install" not in _inst_section:
+                violations.append("README `## 📦 Installation` section must include `alya install` command")
+
+        # 3.8 Test section must use alya test (not alya run tests/...)
+        _test_start = readme_text.find("## 🧪 Running Tests & Benchmarks")
+        _test_end = readme_text.find("\n## ", _test_start + 1) if _test_start != -1 else -1
+        _test_section = readme_text[_test_start:_test_end] if _test_start != -1 and _test_end != -1 else readme_text[_test_start:] if _test_start != -1 else ""
+        if _test_section:
+            if "alya test" not in _test_section:
+                violations.append("README `## 🧪 Running Tests & Benchmarks` section must include `alya test` command")
+            if "alya fmt" not in _test_section:
+                violations.append("README `## 🧪 Running Tests & Benchmarks` section must include `alya fmt . --check` command")
+            if "alya lint" not in _test_section:
+                violations.append("README `## 🧪 Running Tests & Benchmarks` section must include `alya lint . --check` command")
+
+        # 3.9 API Reference must contain a markdown table (|---|)
+        _api_start = readme_text.find("## 📖 API Reference")
+        _api_end = readme_text.find("\n## ", _api_start + 1) if _api_start != -1 else -1
+        _api_section = readme_text[_api_start:_api_end] if _api_start != -1 and _api_end != -1 else readme_text[_api_start:] if _api_start != -1 else ""
+        if _api_section and "|" not in _api_section:
+            violations.append("README `## 📖 API Reference` section must contain a markdown table with function signatures")
+
+        # 3.10 Architecture section must contain a src/ tree code block
+        _arch_start = readme_text.find("## 📁 Project Architecture")
+        _arch_end = readme_text.find("\n## ", _arch_start + 1) if _arch_start != -1 else -1
+        _arch_section = readme_text[_arch_start:_arch_end] if _arch_start != -1 and _arch_end != -1 else readme_text[_arch_start:] if _arch_start != -1 else ""
+        if _arch_section:
+            if "```" not in _arch_section:
+                violations.append("README `## 📁 Project Architecture` section must contain a directory tree code block")
+            elif "src/" not in _arch_section:
+                violations.append("README `## 📁 Project Architecture` directory tree must include `src/` directory")
+
+
 
     # --- Rule 4: GitHub Actions CI Workflow Standards ---
     ci_path = pkg_dir / ".github" / "workflows" / "ci.yml"
