@@ -280,6 +280,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         "alya.toml",
         "README.md",
         "LICENSE",
+        ".alyalint",
         ".gitignore",
         ".editorconfig",
         ".github/workflows/ci.yml",
