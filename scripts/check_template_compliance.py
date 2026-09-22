@@ -6,7 +6,10 @@ Comprehensive compliance and linter suite for official Alya ecosystem packages.
 Verifies that all official packages strictly conform to canonical template and repository standards:
 
 1. Standard Required Files:
-   - alya.toml, README.md, LICENSE, .gitignore, .github/workflows/ci.yml
+   - alya.toml, README.md, LICENSE, .alyalint, .alyafmt, .alyatest,
+     .gitignore, .editorconfig, .github/workflows/ci.yml,
+     .vscode/settings.json, .vscode/launch.json, .vscode/tasks.json,
+     .vscode/extensions.json
 
 2. README.md Structure & Standards:
    - Header: # <package_name> (or # {{PACKAGE_NAME}} for template)
@@ -281,6 +284,8 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         "README.md",
         "LICENSE",
         ".alyalint",
+        ".alyafmt",
+        ".alyatest",
         ".gitignore",
         ".editorconfig",
         ".github/workflows/ci.yml",
