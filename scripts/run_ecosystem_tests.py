@@ -28,6 +28,7 @@ OFFICIAL_PACKAGES = [
     "csv",
     "dotenv",
     "event",
+    "gui",
     "http",
     "json",
     "jwt",
