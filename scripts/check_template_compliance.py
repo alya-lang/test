@@ -180,35 +180,136 @@ def extract_manifest_description(manifest_path: Path) -> str:
     return ""
 
 
-def check_github_dependency_graph(pkg_name: str) -> bool:
+def check_github_dependency_graph(pkg_name: str) -> tuple:
     """
     Verifies that GitHub Dependency Graph is active on the repository
     (Insights -> Dependency graph: https://github.com/alya-lang/<pkg>/network/dependencies).
-    Accessible publicly without requiring repository admin tokens in CI.
-    """
-    import urllib.request
-    try:
-        url = f"https://github.com/alya-lang/{pkg_name}/network/dependencies"
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            if resp.status == 200:
-                html = resp.read().decode("utf-8", errors="replace")
-                if "Dependency graph" in html or "Dependencies" in html:
-                    return True
-    except Exception:
-        pass
 
-    # Fallback to vulnerability-alerts API if running with admin rights
+    Returns (enabled, detail) with tri-state semantics:
+      (True, detail)  -> confirmed enabled.
+      (False, detail) -> confirmed disabled (page/API explicitly says so).
+      (None, detail)  -> could not verify (transient network error, HTTP 429/5xx,
+                         login wall, page layout change). Callers MUST treat this
+                         as a warning, never as a violation -- otherwise any
+                         transient scraper failure becomes a false "disabled"
+                         failure in CI.
+
+    Strategy (in order):
+      1. Authenticated SBOM REST API (`GET /repos/{owner}/{repo}/dependency-graph/sbom`)
+         with GITHUB_TOKEN when available. Needs only `contents: read`, which the
+         CI job already has. HTTP 200 means the graph is enabled; an explicit
+         "dependency graph is disabled" body means it is disabled; anything else
+         (rate-limit, 5xx, network error) is transient -> retry, then unknown.
+      2. Public HTML page scrape as fallback (unauthenticated, rate-limit prone).
+         Only an explicit "disabled" phrase counts as disabled; a fetch failure
+         or an unrecognized page counts as unknown.
+      3. Legacy `vulnerability-alerts` API via `gh` (needs admin rights, rarely
+         available in CI): success confirms enabled, anything else is ignored.
+    """
+    import urllib.error
+    import urllib.request
+
+    token = os.environ.get("GITHUB_TOKEN")
+
+    def api_get(path: str, timeout: int = 15):
+        """GET api.github.com path; returns (status, body). Raises on network errors."""
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "alya-template-compliance-checker",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        req = urllib.request.Request(f"https://api.github.com/{path}", headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status, resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
+            return e.code, body
+
+    def is_disabled_message(body: str) -> bool:
+        low = (body or "").lower()
+        return "dependenc" in low and "disabl" in low
+
+    def is_rate_limited(status, body: str) -> bool:
+        low = (body or "").lower()
+        return status in (429, 403) and ("rate limit" in low or "abuse" in low or "secondary" in low)
+
+    # --- Step 1: authoritative SBOM API (retry transient failures) ---
+    last_detail = "SBOM API not attempted"
+    for attempt in range(3):
+        try:
+            status, body = api_get(f"repos/alya-lang/{pkg_name}/dependency-graph/sbom")
+        except Exception as e:
+            last_detail = f"SBOM API network error (attempt {attempt + 1}/3): {e}"
+            time.sleep(2 * (attempt + 1))
+            continue
+        if status == 200:
+            return True, "dependency-graph SBOM API returned HTTP 200"
+        if status == 404 and is_disabled_message(body):
+            return False, "dependency-graph SBOM API reports the graph is disabled (HTTP 404)"
+        if status == 403 and is_disabled_message(body):
+            return False, "dependency-graph SBOM API reports the graph is disabled (HTTP 403)"
+        if status in (429, 500, 502, 503) or is_rate_limited(status, body):
+            last_detail = f"SBOM API transient HTTP {status} (attempt {attempt + 1}/3)"
+            time.sleep(2 * (attempt + 1))
+            continue
+        if status == 404:
+            # Ambiguous 404 (repo renamed/moved, SBOM not generated yet, deprecated
+            # sync endpoint): not proof of "disabled".
+            last_detail = f"SBOM API ambiguous HTTP 404 (attempt {attempt + 1}/3)"
+            time.sleep(2 * (attempt + 1))
+            continue
+        last_detail = f"SBOM API unexpected HTTP {status} (attempt {attempt + 1}/3)"
+        time.sleep(2 * (attempt + 1))
+
+    # --- Step 2: public HTML fallback (retry transient failures) ---
+    html_detail = last_detail
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(
+                f"https://github.com/alya-lang/{pkg_name}/network/dependencies",
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status == 200:
+                    html = resp.read().decode("utf-8", errors="replace")
+                    if "Dependency graph" in html or "Dependencies" in html:
+                        return True, "dependencies page contains dependency graph content"
+                    if is_disabled_message(html):
+                        return False, "dependencies page explicitly reports the graph is disabled"
+                    html_detail = "dependencies page fetched but content unrecognized (layout change?)"
+                    break
+                html_detail = f"dependencies page HTTP {resp.status} (attempt {attempt + 1}/3)"
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503):
+                html_detail = f"dependencies page transient HTTP {e.code} (attempt {attempt + 1}/3)"
+                time.sleep(2 * (attempt + 1))
+                continue
+            try:
+                body = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
+            if is_disabled_message(body):
+                return False, f"dependencies page explicitly reports the graph is disabled (HTTP {e.code})"
+            html_detail = f"dependencies page HTTP {e.code} (attempt {attempt + 1}/3)"
+            time.sleep(2 * (attempt + 1))
+        except Exception as e:
+            html_detail = f"dependencies page network error (attempt {attempt + 1}/3): {e}"
+            time.sleep(2 * (attempt + 1))
+
+    # --- Step 3: legacy vulnerability-alerts probe (admin rights only) ---
     gh_bin = shutil.which("gh")
     if gh_bin:
         res = run_cmd(["gh", "api", f"repos/alya-lang/{pkg_name}/vulnerability-alerts"], capture=True, timeout=10)
         if res.returncode == 0:
-            return True
+            return True, "vulnerability-alerts API reachable"
 
-    return False
+    return None, f"could not verify dependency graph status ({html_detail})"
 
 
 def check_github_packages_sidebar_disabled(pkg_name: str) -> bool:
@@ -239,9 +340,11 @@ def check_github_packages_sidebar_disabled(pkg_name: str) -> bool:
 def fetch_github_metadata(pkg_name: str) -> tuple:
     """
     Fetches GitHub repository settings, dependency graph status, and sidebar packages status.
-    Returns (repo_dict, dep_graph_enabled, packages_sidebar_disabled, error_string).
+    Returns (repo_dict, dep_graph_enabled, dep_graph_detail, packages_sidebar_disabled, error_string).
+    dep_graph_enabled is tri-state: True (enabled), False (confirmed disabled),
+    None (could not verify -- transient; caller must warn, not fail).
     """
-    dep_graph_enabled = check_github_dependency_graph(pkg_name)
+    dep_graph_enabled, dep_graph_detail = check_github_dependency_graph(pkg_name)
     packages_disabled = check_github_packages_sidebar_disabled(pkg_name)
 
     # 1. Try 'gh' CLI if available
@@ -251,9 +354,9 @@ def fetch_github_metadata(pkg_name: str) -> tuple:
         if res.returncode == 0:
             try:
                 repo_data = json.loads(res.stdout)
-                return repo_data, dep_graph_enabled, packages_disabled, None
+                return repo_data, dep_graph_enabled, dep_graph_detail, packages_disabled, None
             except Exception as e:
-                return None, dep_graph_enabled, packages_disabled, f"JSON parse error from gh api: {e}"
+                return None, dep_graph_enabled, dep_graph_detail, packages_disabled, f"JSON parse error from gh api: {e}"
 
     # 2. Try urllib with GITHUB_TOKEN or unauthenticated REST API fallback
     token = os.environ.get("GITHUB_TOKEN")
@@ -269,9 +372,9 @@ def fetch_github_metadata(pkg_name: str) -> tuple:
         req = urllib.request.Request(f"https://api.github.com/repos/alya-lang/{pkg_name}", headers=headers)
         with urllib.request.urlopen(req, timeout=30) as resp:
             repo_data = json.loads(resp.read().decode("utf-8"))
-        return repo_data, dep_graph_enabled, packages_disabled, None
+        return repo_data, dep_graph_enabled, dep_graph_detail, packages_disabled, None
     except Exception as e:
-        return None, dep_graph_enabled, packages_disabled, f"GitHub REST API error: {e}"
+        return None, dep_graph_enabled, dep_graph_detail, packages_disabled, f"GitHub REST API error: {e}"
 
 
 def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = True) -> dict:
@@ -526,7 +629,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
 
     # --- Rule 9: GitHub Repository Settings & Metadata ---
     if check_github:
-        repo_data, dep_graph_enabled, packages_disabled, gh_err = fetch_github_metadata(pkg_name)
+        repo_data, dep_graph_enabled, dep_graph_detail, packages_disabled, gh_err = fetch_github_metadata(pkg_name)
         if gh_err:
             warnings.append(f"GitHub metadata check skipped: {gh_err}")
         elif repo_data:
@@ -580,9 +683,14 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             elif pkg_name != "template" and is_tmpl:
                 violations.append("GitHub repository should not be a template repository (`is_template = false`)")
 
-            # 7.10 Dependency Graph (Insights -> Dependency graph)
-            if not dep_graph_enabled:
+            # 7.10 Dependency Graph (Insights -> Dependency graph).
+            # Tri-state: only a confirmed-disabled result is a violation. An
+            # unverifiable status (transient network/rate-limit, page layout
+            # change) is a warning so flaky scrapes never fail CI falsely.
+            if dep_graph_enabled is False:
                 violations.append("GitHub Dependency Graph is disabled (must be enabled under Insights -> Dependency graph)")
+            elif dep_graph_enabled is None:
+                warnings.append(f"GitHub Dependency Graph status could not be verified ({dep_graph_detail}); skipping -- transient check, not a violation")
 
             # 7.11 Homepage Sidebar Packages must be disabled
             if not packages_disabled:
