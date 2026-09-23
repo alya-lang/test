@@ -573,6 +573,23 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         if pkg_name == "template" and "GITHUB_STEP_SUMMARY" not in ci_text:
             violations.append("Template repository `.github/workflows/ci.yml` must write docs summary to `$GITHUB_STEP_SUMMARY`")
 
+    # --- Rule 4b: GitHub Actions Release Workflow Doc Assets ---
+    # Every release must attach `alya doc` output (HTML + Markdown archives) so
+    # versioned API documentation ships alongside the tag.
+    release_path = pkg_dir / ".github" / "workflows" / "release.yml"
+    if not release_path.is_file():
+        violations.append("Missing required file: `.github/workflows/release.yml`")
+    else:
+        release_text = release_path.read_text(encoding="utf-8", errors="replace")
+        if "setup-alya" not in release_text:
+            violations.append("`.github/workflows/release.yml` must set up the Alya compiler (`alya-lang/setup-alya`) to build release docs")
+        if "alya doc" not in release_text:
+            violations.append("`.github/workflows/release.yml` must build API docs with `alya doc` for release assets")
+        if "docs-html.zip" not in release_text:
+            violations.append("`.github/workflows/release.yml` must attach a `docs-html.zip` documentation asset to the release")
+        if "docs-md.zip" not in release_text:
+            violations.append("`.github/workflows/release.yml` must attach a `docs-md.zip` documentation asset to the release")
+
     # --- Rule 5: Zero Hardcoded Package Versions in Code ---
     src_dir = pkg_dir / "src"
     if src_dir.is_dir():
