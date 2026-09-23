@@ -589,6 +589,10 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             violations.append("`.github/workflows/release.yml` must attach a `docs-html.zip` documentation asset to the release")
         if "docs-md.zip" not in release_text:
             violations.append("`.github/workflows/release.yml` must attach a `docs-md.zip` documentation asset to the release")
+        if "alya-pkg.tar.gz" not in release_text:
+            violations.append("`.github/workflows/release.yml` must build the curated `alya-pkg.tar.gz` source asset for the release")
+        if ".sha256" not in release_text:
+            violations.append("`.github/workflows/release.yml` must attach a detached `.sha256` checksum for the release asset")
 
     # --- Rule 5: Zero Hardcoded Package Versions in Code ---
     src_dir = pkg_dir / "src"
