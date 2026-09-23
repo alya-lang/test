@@ -80,6 +80,7 @@ OFFICIAL_PACKAGES = [
     "regex",
     "semver",
     "sqlite",
+    "sysinfo",
     "template",
     "tensor",
     "term",

@@ -5,7 +5,7 @@
 
 Official multi-platform integration testing and ecosystem CI for the [Alya](https://github.com/alya-lang/alya) programming language.
 
-This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 25 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
+This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 26 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
 
 ---
 
@@ -13,7 +13,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 - **Multi-OS Matrix:** Verifies the full ecosystem on Linux, Windows, and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
-- **Selective Package Testing:** Run tests for all 25 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
+- **Selective Package Testing:** Run tests for all 26 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
 - **Standalone & Cross-Platform:** Single universal runner (`scripts/run_ecosystem_tests.py`) working seamlessly across Windows, Linux, and macOS without requiring a monorepo setup.
 
@@ -40,6 +40,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`regex`](https://github.com/alya-lang/regex) | `alya-lang/regex` | High-performance regular expression engine with named groups, lookarounds, and global multilingual Unicode support |
 | [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser, comparator, bumper, and range checker |
 | [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | Fast and lightweight SQLite3 bindings with bundled C engine (zero external dependencies) |
+| [`sysinfo`](https://github.com/alya-lang/sysinfo) | `alya-lang/sysinfo` | Cross-platform system information: locale, language, timezone and OS details for Alya |
 | [`template`](https://github.com/alya-lang/template) | `alya-lang/template` | Official template repository for all future Alya packages (GitHub Template enabled) |
 | [`tensor`](https://github.com/alya-lang/tensor) | `alya-lang/tensor` | Multi-dimensional tensor engine with SIMD vector acceleration |
 | [`term`](https://github.com/alya-lang/term) | `alya-lang/term` | Modern terminal UI toolkit: ANSI styling, tables, callouts, trees, progress bars, charts, prompts, cursor controls |
@@ -72,7 +73,7 @@ The test suite runs automatically every night at **02:00 UTC** against the lates
 The ecosystem test suite is fully standalone and runs seamlessly across Windows, macOS, and Linux using a single cross-platform Python runner:
 
 ```bash
-# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 25 packages in parallel):
+# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 26 packages in parallel):
 python scripts/run_ecosystem_tests.py
 
 # 2. Test specific packages only:
