@@ -23,7 +23,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 | Package | Repository | Description |
 |:---|:---|:---|
-| [`cache`](https://github.com/alya-lang/cache) | `alya-lang/cache` | High-performance in-memory cache with LRU eviction, TTL expiry, and statistics for Alya |
+| [`cache`](https://github.com/alya-lang/cache) | `alya-lang/cache` | High-performance in-memory cache with LRU/LFU/FIFO eviction, TTL expiry, hooks, snapshots, and statistics for Alya |
 | [`cli`](https://github.com/alya-lang/cli) | `alya-lang/cli` | Modern command-line interface, argument parsing, flag handling, and subcommand router |
 | [`compress`](https://github.com/alya-lang/compress) | `alya-lang/compress` | 10 compression modules + full LZ family (LZ4, LZ77, LZ78, LZJB, LZMA, LZMA2, LZSS, LZW), Huffman & ZIP archives |
 | [`crypto`](https://github.com/alya-lang/crypto) | `alya-lang/crypto` | Comprehensive cryptography, hashing (SHA-2/3, BLAKE2s, Keccak, HMAC), AEAD (ChaCha20-Poly1305), KDF, and encodings |
