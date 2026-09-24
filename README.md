@@ -28,7 +28,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`crypto`](https://github.com/alya-lang/crypto) | `alya-lang/crypto` | Comprehensive cryptography, hashing (SHA-2/3, BLAKE2s, Keccak, HMAC), AEAD (ChaCha20-Poly1305), KDF, and encodings |
 | [`csv`](https://github.com/alya-lang/csv) | `alya-lang/csv` | RFC-4180 compliant CSV and TSV parser, serializer, and data processor |
 | [`dotenv`](https://github.com/alya-lang/dotenv) | `alya-lang/dotenv` | Environment variable (.env) parser, interpolation, and configuration loader |
-| [`event`](https://github.com/alya-lang/event) | `alya-lang/event` | High-concurrency reactor event loop, timers, and I/O multiplexer for Alya |
+| [`event`](https://github.com/alya-lang/event) | `alya-lang/event` | High-throughput single-threaded reactor event loop, timers, and I/O multiplexer for Alya |
 | [`gui`](https://github.com/alya-lang/gui) | `alya-lang/gui` | Native cross-platform GUI toolkit: windowing, widgets, layout, and 2D canvas for Alya |
 | [`http`](https://github.com/alya-lang/http) | `alya-lang/http` | Production-ready HTTP client, server, router, compression, and middleware toolkit |
 | [`i18n`](https://github.com/alya-lang/i18n) | `alya-lang/i18n` | Lightweight internationalization: locale bundles, gettext-style .tr and JSON loaders, CLDR-lite plurals |
@@ -41,9 +41,9 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`regex`](https://github.com/alya-lang/regex) | `alya-lang/regex` | High-performance regular expression engine with named groups, lookarounds, and global multilingual Unicode support |
 | [`semver`](https://github.com/alya-lang/semver) | `alya-lang/semver` | Semantic Versioning (SemVer 2.0.0) parser, comparator, bumper, and range checker |
 | [`sqlite`](https://github.com/alya-lang/sqlite) | `alya-lang/sqlite` | Fast and lightweight SQLite3 bindings with bundled C engine (zero external dependencies) |
-| [`sysinfo`](https://github.com/alya-lang/sysinfo) | `alya-lang/sysinfo` | Cross-platform system information: locale, language, timezone and OS details for Alya |
+| [`sysinfo`](https://github.com/alya-lang/sysinfo) | `alya-lang/sysinfo` | Cross-platform system information: OS, CPU, memory, disk, host, timezone, power, process, env, load, and locale for Alya |
 | [`template`](https://github.com/alya-lang/template) | `alya-lang/template` | Official template repository for all future Alya packages (GitHub Template enabled) |
-| [`tensor`](https://github.com/alya-lang/tensor) | `alya-lang/tensor` | Multi-dimensional tensor engine with SIMD vector acceleration |
+| [`tensor`](https://github.com/alya-lang/tensor) | `alya-lang/tensor` | N-dimensional tensor engine with multi-dtype storage, broadcasting, and GPU acceleration (CUDA/Metal/OpenCL) |
 | [`term`](https://github.com/alya-lang/term) | `alya-lang/term` | Modern terminal UI toolkit: ANSI styling, tables, callouts, trees, progress bars, charts, prompts, cursor controls |
 | [`toml`](https://github.com/alya-lang/toml) | `alya-lang/toml` | TOML v1.0.0 parser, serializer, and TomlBuilder API |
 | [`url`](https://github.com/alya-lang/url) | `alya-lang/url` | WHATWG and RFC 3986 compliant URL parser, serializer, normalizer, and query string library |
