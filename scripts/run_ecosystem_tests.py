@@ -30,6 +30,7 @@ OFFICIAL_PACKAGES = [
     "event",
     "gui",
     "http",
+    "i18n",
     "json",
     "jwt",
     "logger",
