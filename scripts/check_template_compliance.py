@@ -597,11 +597,16 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             violations.append("`.github/workflows/release.yml` must attach a detached `.sha256` checksum for the release asset")
 
     # --- Rule 5: Zero Hardcoded Package Versions in Code ---
+    # Anchored to `<pkg>_version` exactly as the rule states. Generic
+    # `*_version()` accessors are legitimate: sysinfo's `os_version()` /
+    # `kernel_version()` report OS facts, sqlite's `version()` reports the
+    # native engine version — none hardcode the package version.
     src_dir = pkg_dir / "src"
     if src_dir.is_dir():
+        version_re = re.compile(r"function\s+%s_version\s*\(\s*\)" % re.escape(pkg_name))
         for alya_file in src_dir.glob("**/*.alya"):
             code = alya_file.read_text(encoding="utf-8", errors="replace")
-            if re.search(r"function\s+\w+_version\s*\(\s*\)", code):
+            if version_re.search(code):
                 violations.append(f"Hardcoded version function found in `{alya_file.relative_to(pkg_dir)}`")
 
     # --- Rule 6: Zero Legacy Backward-Compatibility / Fallback Aliases ---
