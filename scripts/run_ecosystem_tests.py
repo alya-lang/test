@@ -22,6 +22,7 @@ from pathlib import Path
 
 # Official Alya ecosystem packages
 OFFICIAL_PACKAGES = [
+    "cache",
     "cli",
     "compress",
     "crypto",
