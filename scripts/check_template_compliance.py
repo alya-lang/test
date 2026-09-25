@@ -8,7 +8,8 @@ Verifies that all official packages strictly conform to canonical template and r
 1. Standard Required Files:
    - alya.toml, README.md, LICENSE, .alyalint, .alyafmt, .alyatest,
      .gitignore, .gitattributes, .editorconfig, .github/workflows/ci.yml,
-     .github/dependabot.yml,
+     .github/workflows/release.yml, .github/workflows/update-deps.yml,
+     .github/workflows/cleanup-deps.yml, .github/dependabot.yml,
      .vscode/settings.json, .vscode/launch.json, .vscode/tasks.json,
      .vscode/extensions.json
 
@@ -398,6 +399,9 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         ".gitattributes",
         ".editorconfig",
         ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        ".github/workflows/update-deps.yml",
+        ".github/workflows/cleanup-deps.yml",
         ".github/dependabot.yml",
         ".vscode/settings.json",
         ".vscode/launch.json",
@@ -592,9 +596,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
     # Every release must attach `alya doc` output (HTML + Markdown archives) so
     # versioned API documentation ships alongside the tag.
     release_path = pkg_dir / ".github" / "workflows" / "release.yml"
-    if not release_path.is_file():
-        violations.append("Missing required file: `.github/workflows/release.yml`")
-    else:
+    if release_path.is_file():
         release_text = release_path.read_text(encoding="utf-8", errors="replace")
         if "setup-alya" not in release_text:
             violations.append("`.github/workflows/release.yml` must set up the Alya compiler (`alya-lang/setup-alya`) to build release docs")
@@ -608,6 +610,25 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             violations.append("`.github/workflows/release.yml` must build the curated `alya-pkg.tar.gz` source asset for the release")
         if ".sha256" not in release_text:
             violations.append("`.github/workflows/release.yml` must attach a detached `.sha256` checksum for the release asset")
+
+    # --- Rule 4c: GitHub Actions Dependency Update & Cleanup Workflows ---
+    update_deps_path = pkg_dir / ".github" / "workflows" / "update-deps.yml"
+    if update_deps_path.is_file():
+        ud_text = update_deps_path.read_text(encoding="utf-8", errors="replace")
+        if "update-alya" not in ud_text:
+            violations.append("`.github/workflows/update-deps.yml` must invoke `alya-lang/update-alya`")
+        if "setup-alya" not in ud_text:
+            violations.append("`.github/workflows/update-deps.yml` must set up the Alya compiler (`alya-lang/setup-alya`)")
+
+    cleanup_deps_path = pkg_dir / ".github" / "workflows" / "cleanup-deps.yml"
+    if cleanup_deps_path.is_file():
+        cd_text = cleanup_deps_path.read_text(encoding="utf-8", errors="replace")
+        if "pull_request" not in cd_text or "closed" not in cd_text:
+            violations.append("`.github/workflows/cleanup-deps.yml` must trigger on `pull_request` types `[closed]`")
+        if "gh api --method DELETE" not in cd_text and "refs/heads" not in cd_text:
+            violations.append("`.github/workflows/cleanup-deps.yml` must delete closed PR branches via GitHub API")
+        if "head.repo.full_name == github.repository" not in cd_text:
+            violations.append("`.github/workflows/cleanup-deps.yml` must include fork protection (`head.repo.full_name == github.repository`)")
 
     # --- Rule 5: Zero Hardcoded Package Versions in Code ---
     # Anchored to `<pkg>_version` exactly as the rule states. Generic
