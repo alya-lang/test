@@ -7,7 +7,8 @@ Verifies that all official packages strictly conform to canonical template and r
 
 1. Standard Required Files:
    - alya.toml, README.md, LICENSE, .alyalint, .alyafmt, .alyatest,
-     .gitignore, .editorconfig, .github/workflows/ci.yml,
+     .gitignore, .gitattributes, .editorconfig, .github/workflows/ci.yml,
+     .github/dependabot.yml,
      .vscode/settings.json, .vscode/launch.json, .vscode/tasks.json,
      .vscode/extensions.json
 
@@ -394,8 +395,10 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         ".alyafmt",
         ".alyatest",
         ".gitignore",
+        ".gitattributes",
         ".editorconfig",
         ".github/workflows/ci.yml",
+        ".github/dependabot.yml",
         ".vscode/settings.json",
         ".vscode/launch.json",
         ".vscode/tasks.json",
@@ -405,6 +408,15 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         p = pkg_dir / rf
         if not p.is_file():
             violations.append(f"Missing required file: `{rf}`")
+
+    # --- Rule 1b: .gitattributes line-ending normalization ---
+    gitattr = pkg_dir / ".gitattributes"
+    if gitattr.is_file():
+        ga_text = gitattr.read_text(encoding="utf-8", errors="replace")
+        if "* text=auto" not in ga_text:
+            violations.append("`.gitattributes` must contain `* text=auto` normalization")
+        if "*.alya text eol=lf" not in ga_text:
+            violations.append("`.gitattributes` must pin `*.alya text eol=lf`")
 
     # --- Rule 2: alya.toml Manifest Integrity ---
     manifest_path = pkg_dir / "alya.toml"
