@@ -9,7 +9,8 @@ Verifies that all official packages strictly conform to canonical template and r
    - alya.toml, README.md, LICENSE, .alyalint, .alyafmt, .alyatest,
      .gitignore, .gitattributes, .editorconfig, .github/workflows/ci.yml,
      .github/workflows/release.yml, .github/workflows/update-deps.yml,
-     .github/workflows/cleanup-deps.yml, .github/dependabot.yml,
+     .github/workflows/cleanup-deps.yml, .github/workflows/code-scanning.yml,
+     .github/dependabot.yml,
      .vscode/settings.json, .vscode/launch.json, .vscode/tasks.json,
      .vscode/extensions.json
 
@@ -402,6 +403,7 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
         ".github/workflows/release.yml",
         ".github/workflows/update-deps.yml",
         ".github/workflows/cleanup-deps.yml",
+        ".github/workflows/code-scanning.yml",
         ".github/dependabot.yml",
         ".vscode/settings.json",
         ".vscode/launch.json",
@@ -629,6 +631,16 @@ def check_package_compliance(pkg_name: str, pkg_dir: Path, check_github: bool = 
             violations.append("`.github/workflows/cleanup-deps.yml` must delete closed PR branches via GitHub API")
         if "head.repo.full_name == github.repository" not in cd_text:
             violations.append("`.github/workflows/cleanup-deps.yml` must include fork protection (`head.repo.full_name == github.repository`)")
+
+    codescan_path = pkg_dir / ".github" / "workflows" / "code-scanning.yml"
+    if codescan_path.is_file():
+        cs_text = codescan_path.read_text(encoding="utf-8", errors="replace")
+        if "alya lint" not in cs_text or "--format sarif" not in cs_text:
+            violations.append("`.github/workflows/code-scanning.yml` must run `alya lint` with `--format sarif`")
+        if "upload-sarif" not in cs_text:
+            violations.append("`.github/workflows/code-scanning.yml` must upload results via `upload-sarif`")
+        if "security-events" not in cs_text:
+            violations.append("`.github/workflows/code-scanning.yml` must request `security-events: write` permission")
 
     # --- Rule 5: Zero Hardcoded Package Versions in Code ---
     # Anchored to `<pkg>_version` exactly as the rule states. Generic
