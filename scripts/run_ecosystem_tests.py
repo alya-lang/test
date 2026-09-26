@@ -49,6 +49,7 @@ OFFICIAL_PACKAGES = [
     "url",
     "uuid",
     "uv",
+    "xml",
     "yaml",
 ]
 
