@@ -89,6 +89,7 @@ OFFICIAL_PACKAGES = [
     "template",
     "tensor",
     "term",
+    "tls",
     "toml",
     "url",
     "uuid",
