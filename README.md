@@ -36,7 +36,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`json`](https://github.com/alya-lang/json) | `alya-lang/json` | RFC 8259 JSON parser, recursive serializer, JSONPath, JSON Schema validator, NDJSON, and builder |
 | [`jwt`](https://github.com/alya-lang/jwt) | `alya-lang/jwt` | Native RFC 7519 JSON Web Token library with HMAC-SHA256 and fluent builder |
 | [`logger`](https://github.com/alya-lang/logger) | `alya-lang/logger` | Structured logging, leveled output, JSON format, and file rotation |
-| [`math`](https://github.com/alya-lang/math) | `alya-lang/math` | Multi-precision integer arithmetic for Alya (30-bit limb big integers: add, sub, mul, divmod, modexp) |
+| [`math`](https://github.com/alya-lang/math) | `alya-lang/math` | Comprehensive mathematics for Alya (big integers, rationals, number theory, primes, combinatorics, complex numbers, matrices) |
 | [`mime`](https://github.com/alya-lang/mime) | `alya-lang/mime` | MIME type and media type detection library |
 | [`mustache`](https://github.com/alya-lang/mustache) | `alya-lang/mustache` | Fast, zero-dependency Mustache template engine (variables, sections, partials, HTML escaping) |
 | [`rand`](https://github.com/alya-lang/rand) | `alya-lang/rand` | Modern pseudo-random number generator (PRNG), statistical distributions, and sampling toolkit |
