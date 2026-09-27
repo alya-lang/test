@@ -79,6 +79,7 @@ OFFICIAL_PACKAGES = [
     "json",
     "jwt",
     "logger",
+    "math",
     "mime",
     "mustache",
     "rand",
