@@ -48,6 +48,7 @@ OFFICIAL_PACKAGES = [
     "term",
     "tls",
     "toml",
+    "tz",
     "url",
     "uuid",
     "uv",
