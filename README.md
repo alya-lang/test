@@ -5,13 +5,13 @@
 
 Official multi-platform integration testing and ecosystem CI for the [Alya](https://github.com/alya-lang/alya) programming language.
 
-This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 32 official Alya packages, and executes their test suites across **Linux (`ubuntu-latest`)**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
+This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 32 official Alya packages, and executes their test suites across **Linux x64/x86 (`ubuntu-latest`)**, **Linux ARM64**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
 
 ---
 
 ## ⚡ Key Features
 
-- **Multi-OS Matrix:** Verifies the full ecosystem on Linux, Windows, and macOS (Intel & Apple Silicon).
+- **Multi-OS Matrix:** Verifies the full ecosystem on Linux (x64, x86 & ARM64), Windows (x64 & ARM64), and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
 - **Selective Package Testing:** Run tests for all 32 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
@@ -99,6 +99,9 @@ python scripts/run_ecosystem_tests.py --jobs 4
 
 # 7. Custom per-package timeout (default: 300s):
 python scripts/run_ecosystem_tests.py --timeout 180
+
+# 8. Build/test the compiler for Linux x86 (32-bit):
+python scripts/run_ecosystem_tests.py --target i686-unknown-linux-gnu
 ```
 
 ### ⚙️ Runner Architecture & Self-Sufficiency

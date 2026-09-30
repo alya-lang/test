@@ -219,12 +219,14 @@ def clone_with_retry(cmd, cwd=None, retries=3, delay=2):
     return False
 
 
-def build_compiler(compiler_dir, profile="quick"):
+def build_compiler(compiler_dir, profile="quick", target=""):
     """Builds the Alya compiler using cargo and returns path to alya binary."""
     group_start("🔨 Building Alya Compiler")
-    log(f"Building Alya compiler in {compiler_dir} (profile: {profile})...", COLOR_CYAN)
-    
+    log(f"Building Alya compiler in {compiler_dir} (profile: {profile}, target: {target or 'host'})...", COLOR_CYAN)
+
     cargo_cmd = ["cargo", "build", f"--profile={profile}"]
+    if target:
+        cargo_cmd += ["--target", target]
     res = run_cmd(cargo_cmd, cwd=compiler_dir, stream=True)
     if res.returncode != 0:
         log("Cargo build failed!", COLOR_RED)
@@ -234,9 +236,12 @@ def build_compiler(compiler_dir, profile="quick"):
     # Locate binary
     ext = ".exe" if sys.platform == "win32" else ""
     bin_name = f"alya{ext}"
-    bin_path = compiler_dir / "target" / profile / bin_name
-    
-    if not bin_path.is_file():
+    search_roots = [compiler_dir / "target" / profile / bin_name]
+    if target:
+        search_roots.insert(0, compiler_dir / "target" / target / profile / bin_name)
+    bin_path = next((p for p in search_roots if p.is_file()), None)
+
+    if bin_path is None:
         # Try release directory fallback
         bin_path = compiler_dir / "target" / "release" / bin_name
 
@@ -278,12 +283,15 @@ def build_compiler(compiler_dir, profile="quick"):
     return bin_path, version_str
 
 
-def run_compiler_tests(compiler_dir):
+def run_compiler_tests(compiler_dir, target=""):
     """Runs compiler test suite with cargo test."""
     group_start("🦀 Compiler Internal Tests (cargo test)")
     log("Running compiler test suite (cargo test)...", COLOR_CYAN)
     start = time.time()
-    res = run_cmd(["cargo", "test"], cwd=compiler_dir, stream=True)
+    test_cmd = ["cargo", "test"]
+    if target:
+        test_cmd += ["--target", target]
+    res = run_cmd(test_cmd, cwd=compiler_dir, stream=True)
     duration = time.time() - start
     passed = (res.returncode == 0)
     
@@ -470,6 +478,12 @@ def main():
         help="Timeout in seconds for each package test run (default: 300).",
     )
     parser.add_argument(
+        "--target",
+        type=str,
+        default="",
+        help="Rust target triple for building/testing the compiler (e.g. i686-unknown-linux-gnu for Linux x86). Empty builds for the host.",
+    )
+    parser.add_argument(
         "--workspace-dir",
         type=Path,
         default=Path("workspace"),
@@ -481,7 +495,8 @@ def main():
     
     os_name = platform.system()
     arch_name = platform.machine()
-    log(f"Running Alya Ecosystem Tests on {os_name} ({arch_name})", COLOR_BOLD)
+    target_label = f" (target: {args.target})" if args.target else ""
+    log(f"Running Alya Ecosystem Tests on {os_name} ({arch_name}){target_label}", COLOR_BOLD)
 
     workspace = args.workspace_dir.resolve()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -504,12 +519,12 @@ def main():
                 sys.exit(1)
 
     # 2. Build Compiler
-    _, compiler_version = build_compiler(compiler_dir, profile="quick")
+    _, compiler_version = build_compiler(compiler_dir, profile="quick", target=args.target)
 
     # 3. Run Compiler Tests
     comp_res = None
     if not args.skip_compiler_tests:
-        comp_res = run_compiler_tests(compiler_dir)
+        comp_res = run_compiler_tests(compiler_dir, target=args.target)
 
     # 4. Resolve Packages
     if args.packages.strip().upper() == "ALL":
