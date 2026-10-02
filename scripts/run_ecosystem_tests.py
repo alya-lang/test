@@ -481,7 +481,7 @@ def main():
         "--target",
         type=str,
         default="",
-        help="Rust target triple for building/testing the compiler (e.g. i686-unknown-linux-gnu for Linux x86). Empty builds for the host.",
+        help="Rust target triple for building/testing the compiler (e.g. x86_64-unknown-linux-gnu). Empty builds for the host.",
     )
     parser.add_argument(
         "--workspace-dir",
@@ -491,6 +491,11 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.target and any(x in args.target.lower() for x in ("i686", "i386", "x86-", "x86_32")):
+        print(f"{COLOR_RED}Error: 32-bit x86 target '{args.target}' is not supported. Alya is 64-bit only.{COLOR_RESET}", file=sys.stderr)
+        sys.exit(1)
+
     suite_start = time.time()
     
     os_name = platform.system()
