@@ -116,6 +116,9 @@ jobs:
         env:
           ALYA_TOOLCHAIN_AUTO_INSTALL: '1'
           PYTHONUNBUFFERED: '1'
+          # Inner `alya test` suites default to a 60s per-binary timeout;
+          # heavy suites (e.g. crypto bignum) exceed it on slow runners.
+          ALYA_TEST_TIMEOUT_SECS: '180'
         run: |
           COMPILER_BRANCH="${{ inputs.compiler_branch || 'develop' }}"
           PACKAGES="${{ inputs.packages || 'ALL' }}"
