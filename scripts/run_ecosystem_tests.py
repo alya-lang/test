@@ -39,6 +39,7 @@ OFFICIAL_PACKAGES = [
     "math",
     "mime",
     "mustache",
+    "otp",
     "rand",
     "regex",
     "semver",
