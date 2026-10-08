@@ -77,6 +77,7 @@ OFFICIAL_PACKAGES = [
     "gui",
     "http",
     "i18n",
+    "ipc",
     "json",
     "jwt",
     "logger",
