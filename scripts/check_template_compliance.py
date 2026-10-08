@@ -82,6 +82,7 @@ OFFICIAL_PACKAGES = [
     "ipc",
     "json",
     "jwt",
+    "linq",
     "logger",
     "math",
     "mime",
