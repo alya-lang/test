@@ -134,4 +134,5 @@ jobs:
           python3 -u scripts/run_ecosystem_tests.py \
             --compiler-branch "$COMPILER_BRANCH" \
             --packages "$PACKAGES" \
+            --timeout "${ALYA_TEST_TIMEOUT_SECS:-600}" \
             $EXTRA_FLAGS
