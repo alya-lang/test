@@ -88,6 +88,7 @@ OFFICIAL_PACKAGES = [
     "rand",
     "regex",
     "semver",
+    "shm",
     "sqlite",
     "sysinfo",
     "template",
