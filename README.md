@@ -5,7 +5,7 @@
 
 Official multi-platform integration testing and ecosystem CI for the [Alya](https://github.com/alya-lang/alya) programming language.
 
-This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 42 official Alya packages, and executes their test suites across **Linux x64 (`ubuntu-latest`)**, **Linux ARM64**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
+This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 43 official Alya packages, and executes their test suites across **Linux x64 (`ubuntu-latest`)**, **Linux ARM64**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
 
 ---
 
@@ -13,7 +13,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 - **Multi-OS Matrix:** Verifies the full ecosystem on Linux (x64 & ARM64), Windows (x64 & ARM64), and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
-- **Selective Package Testing:** Run tests for all 42 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
+- **Selective Package Testing:** Run tests for all 43 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
 - **Standalone & Cross-Platform:** Single universal runner (`scripts/run_ecosystem_tests.py`) working seamlessly across Windows, Linux, and macOS without requiring a monorepo setup.
 
@@ -31,6 +31,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`crypto`](https://github.com/alya-lang/crypto) | `alya-lang/crypto` | Comprehensive cryptography, hashing (SHA-2/3, BLAKE2s, Keccak, HMAC), AEAD (ChaCha20-Poly1305), KDF, and encodings |
 | [`csv`](https://github.com/alya-lang/csv) | `alya-lang/csv` | RFC-4180 compliant CSV and TSV parser, serializer, and data processor |
 | [`datatypes`](https://github.com/alya-lang/datatypes) | `alya-lang/datatypes` | Advanced data structures for Alya: RingBuffer, DoublyLinkedList, Trie, BitSet, BloomFilter and more |
+| [`display`](https://github.com/alya-lang/display) | `alya-lang/display` | Cross-platform display enumeration: monitors, resolution, DPI, scale, refresh rate, and color info for Alya |
 | [`dotenv`](https://github.com/alya-lang/dotenv) | `alya-lang/dotenv` | Environment variable (.env) parser, interpolation, and configuration loader |
 | [`event`](https://github.com/alya-lang/event) | `alya-lang/event` | High-throughput single-threaded reactor event loop, timers, and I/O multiplexer for Alya |
 | [`gui`](https://github.com/alya-lang/gui) | `alya-lang/gui` | Native cross-platform GUI toolkit: windowing, widgets, layout, and 2D canvas for Alya |
@@ -89,7 +90,7 @@ The test suite runs automatically every night at **02:00 UTC** against the lates
 The ecosystem test suite is fully standalone and runs seamlessly across Windows, macOS, and Linux using a single cross-platform Python runner:
 
 ```bash
-# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 42 packages in parallel):
+# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 43 packages in parallel):
 python scripts/run_ecosystem_tests.py
 
 # 2. Test specific packages only:
