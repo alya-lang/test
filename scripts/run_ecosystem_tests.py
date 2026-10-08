@@ -44,6 +44,7 @@ OFFICIAL_PACKAGES = [
     "mime",
     "mustache",
     "otp",
+    "pool",
     "rand",
     "regex",
     "semver",
