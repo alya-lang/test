@@ -73,6 +73,7 @@ OFFICIAL_PACKAGES = [
     "compress",
     "crypto",
     "csv",
+    "datatypes",
     "dotenv",
     "event",
     "gui",
