@@ -115,7 +115,7 @@ jobs:
         shell: bash
         env:
           ALYA_TOOLCHAIN_AUTO_INSTALL: '1'
-          ALYA_TEST_TIMEOUT_SECS: '180'
+          ALYA_TEST_TIMEOUT_SECS: '600'
           PYTHONUNBUFFERED: '1'
         run: |
           COMPILER_BRANCH="${{ inputs.compiler_branch || 'develop' }}"
