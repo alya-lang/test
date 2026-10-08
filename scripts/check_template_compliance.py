@@ -100,6 +100,7 @@ OFFICIAL_PACKAGES = [
     "term",
     "tls",
     "toml",
+    "transfer",
     "tz",
     "url",
     "uuid",
