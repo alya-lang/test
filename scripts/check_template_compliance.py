@@ -104,6 +104,7 @@ OFFICIAL_PACKAGES = [
     "url",
     "uuid",
     "uv",
+    "webview",
     "xml",
     "yaml",
 ]
