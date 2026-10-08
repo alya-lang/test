@@ -25,6 +25,7 @@ OFFICIAL_PACKAGES = [
     "archive",
     "cache",
     "cli",
+    "clipboard",
     "compress",
     "crypto",
     "csv",
