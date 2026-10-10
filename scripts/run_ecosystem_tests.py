@@ -62,6 +62,7 @@ OFFICIAL_PACKAGES = [
     "url",
     "uuid",
     "uv",
+    "web",
     "webview",
     "xml",
     "yaml",

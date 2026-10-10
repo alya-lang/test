@@ -5,7 +5,7 @@
 
 Official multi-platform integration testing and ecosystem CI for the [Alya](https://github.com/alya-lang/alya) programming language.
 
-This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 43 official Alya packages, and executes their test suites across **Linux x64 (`ubuntu-latest`)**, **Linux ARM64**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
+This repository compiles the Alya compiler (against any branch or tag, default: `develop`), clones all 44 official Alya packages, and executes their test suites across **Linux x64 (`ubuntu-latest`)**, **Linux ARM64**, **Windows (`windows-latest`)**, and **macOS (`macos-latest`)**.
 
 ---
 
@@ -13,7 +13,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 
 - **Multi-OS Matrix:** Verifies the full ecosystem on Linux (x64 & ARM64), Windows (x64 & ARM64), and macOS (Intel & Apple Silicon).
 - **Flexible Compiler Branching:** Test the compiler on `develop`, `main`, or any feature branch before releasing.
-- **Selective Package Testing:** Run tests for all 43 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
+- **Selective Package Testing:** Run tests for all 44 official packages or target a specific package (e.g. `json`, `http`, `crypto`, `term`, `mustache`).
 - **Rich GitHub Step Summary:** Generates clear markdown reports with status tables and execution times for each package.
 - **Standalone & Cross-Platform:** Single universal runner (`scripts/run_ecosystem_tests.py`) working seamlessly across Windows, Linux, and macOS without requiring a monorepo setup.
 
@@ -63,6 +63,7 @@ This repository compiles the Alya compiler (against any branch or tag, default: 
 | [`url`](https://github.com/alya-lang/url) | `alya-lang/url` | WHATWG and RFC 3986 compliant URL parser, serializer, normalizer, and query string library |
 | [`uuid`](https://github.com/alya-lang/uuid) | `alya-lang/uuid` | RFC 4122 UUID v4, RFC 9562 UUID v7, ULID, and NanoID toolkit |
 | [`uv`](https://github.com/alya-lang/uv) | `alya-lang/uv` | High-performance OS kernel I/O multiplexing (epoll, WSAPoll, kqueue) and asynchronous event engine for Alya |
+| [`web`](https://github.com/alya-lang/web) | `alya-lang/web` | High-level web framework for Alya: routing, middleware, JSON APIs, and views |
 | [`webview`](https://github.com/alya-lang/webview) | `alya-lang/webview` | Cross-platform system webview bindings for Alya: WebView2 on Windows, WKWebView on macOS, WebKitGTK on Linux |
 | [`xml`](https://github.com/alya-lang/xml) | `alya-lang/xml` | Fast, zero-dependency XML 1.0 parser and serializer for Alya |
 | [`yaml`](https://github.com/alya-lang/yaml) | `alya-lang/yaml` | Fast, zero-dependency YAML 1.2 parser and serializer |
@@ -90,7 +91,7 @@ The test suite runs automatically every night at **02:00 UTC** against the lates
 The ecosystem test suite is fully standalone and runs seamlessly across Windows, macOS, and Linux using a single cross-platform Python runner:
 
 ```bash
-# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 43 packages in parallel):
+# 1. Run full test suite (builds compiler, runs compiler cargo tests, tests all 44 packages in parallel):
 python scripts/run_ecosystem_tests.py
 
 # 2. Test specific packages only:
